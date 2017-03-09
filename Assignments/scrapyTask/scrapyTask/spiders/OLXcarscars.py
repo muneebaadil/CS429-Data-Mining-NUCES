@@ -2,6 +2,9 @@
 import scrapy
 from bs4 import BeautifulSoup
 
+def findcategories(tag):
+    return unicode(tag.string).find('View all Ads') != -1 and tag.name == 'span'
+
 class OlxcarscarsSpider(scrapy.Spider):
     name = "OLXcarscars"
     #allowed_domains = ["olx.com.pk/cars/"]
@@ -13,10 +16,18 @@ class OlxcarscarsSpider(scrapy.Spider):
     def parse(self, response):
         html = response.body
         soup = BeautifulSoup(html, 'lxml')
-        tds = soup.find_all(name='td')
-        for tag in tds: 
-        	nexturl = tag.find(name='a', href=True)['href']
-        	yield scrapy.Request(nexturl, callback=self.parseCategory)
+        tag = soup.find(name='td')
+        nexturl = tag.find(name='a', href=True)['href']
+        yield scrapy.Request(nexturl, callback=self.parseCategory)
 
+    
     def parseCategory(self, response):
+    	html = response.body
+    	soup = BeautifulSoup(html, 'lxml')
+    	cats = soup.find_all(findcategories)
+    	for c in cats: 
+    		nexturl = c.parent['href']
+    		yield scrapy.Request(nexturl, callback=self.parseList)
+
+    def parseList(self, response):
     	pass
