@@ -52,10 +52,15 @@ class OlxscraperSpider(scrapy.Spider):
     	soup = BeautifulSoup(html, 'lxml')
     	mainsec = soup.find(mainbox)
     	left, right = mainsec.find_all(name='div', recursive=False)
-    	title = left.find(name='h1', class_=True)
+    	
+    	title = unicode(left.find(name='h1', class_=True).string)
+    	loc = unicode(left.div.div.p.span.strong.string)
+    	adID = left.div.div.p.small.span.find('span', class_=['rel']).string
 
     	yield {
-    	'title': re.sub(pattern=r'\s', repl='', string=unicode(title.string)),
-    	'URL': response.url
+    	'title': re.sub(pattern=r'\s', repl='', string=title),
+    	'URL': response.url, 
+    	'loc': re.sub(pattern=r'\s', repl='', string=loc),
+    	'ID': re.sub(pattern=r'\s', repl='', string=adID)
     	}
     	return 
