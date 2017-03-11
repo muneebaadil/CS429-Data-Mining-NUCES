@@ -65,8 +65,12 @@ class OlxscraperSpider(scrapy.Spider):
     	pricebox = right.div.div.div.find('div', class_=['pricelabel'])
     	price = int(re.sub(r'[^\d]', '', pricebox.strong.string)) if (pricebox is not None) else None
 
-    	user = unicode(right.div.div.div.find('div', class_='userdatabox').p.span.string)
+    	userdatabox = right.div.div.div.find('div', class_='userdatabox')
+    	user = unicode(userdatabox.p.span.string) if (userdatabox is not None) else None
 
+    	contactbox = right.div.div.div.find('div', class_=['contactbox'])
+    	contact = contactbox.strong.string if (contactbox is not None) else None
+    	
     	yield {
     	'title': re.sub(pattern=r'\s', repl='', string=title),
     	'URL': response.url, 
@@ -74,6 +78,7 @@ class OlxscraperSpider(scrapy.Spider):
     	'ID': re.sub(pattern=r'\s', repl='', string=adID),
     	'views': views,
     	'price': price, 
-    	"user name": user 
+    	"user name": user, 
+    	'contact': contact 
     	}
     	return 
