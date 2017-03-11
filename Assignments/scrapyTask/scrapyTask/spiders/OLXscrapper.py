@@ -1,17 +1,12 @@
 # -*- coding: utf-8 -*-
 import scrapy
 from bs4 import BeautifulSoup
-import re 
 
 def findcategories(tag):
     return unicode(tag.string).find('View all Ads') != -1 and tag.name == 'span'
 
-def mainbox(tag):
-	return tag.name == 'div' and tag.has_attr('class') and \
-	('clr' in tag['class']) and ('offerbody' in tag['class'])
-
-class OlxscraperSpider(scrapy.Spider):
-    name = "OLXscraper"
+class OlxcarscarsSpider(scrapy.Spider):
+    name = "OLXcarscars"
     #allowed_domains = ["olx.com.pk/cars/"]
     start_urls = (
         'http://www.olx.com.pk/',
@@ -48,14 +43,4 @@ class OlxscraperSpider(scrapy.Spider):
     		yield scrapy.Request(nexturl, callback=self.parseAd) 
 
     def parseAd(self, response):
-    	html = response.body 
-    	soup = BeautifulSoup(html, 'lxml')
-    	mainsec = soup.find(mainbox)
-    	left, right = mainsec.find_all(name='div', recursive=False)
-    	title = left.find(name='h1', class_=True)
-
-    	yield {
-    	'title': re.sub(pattern=r'\s', repl='', string=unicode(title.string)),
-    	'URL': response.url
-    	}
-    	return 
+    	pass
