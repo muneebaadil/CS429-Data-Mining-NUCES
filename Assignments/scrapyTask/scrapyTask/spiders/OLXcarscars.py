@@ -50,17 +50,30 @@ class OlxscraperSpider(scrapy.Spider):
     def parseAd(self, response):
     	html = response.body 
     	soup = BeautifulSoup(html, 'lxml')
+    	
+    	#Dividing the page into sections for future convenience.
     	mainsec = soup.find(mainbox)
     	left, right = mainsec.find_all(name='div', recursive=False)
     	
+    	#Left section attributes. 
     	title = unicode(left.find(name='h1', class_=True).string)
     	loc = unicode(left.div.div.p.span.strong.string)
     	adID = left.div.div.p.small.span.find('span', class_=['rel']).string
+    	views = int(left.find(name='div', id='offerbottombar').strong.string)
+
+    	#Right section attributes.
+    	pricebox = right.div.div.div.find('div', class_=['pricelabel'])
+    	price = int(re.sub(r'[^\d]', '', pricebox.strong.string)) if (pricebox is not None) else None
+
+    	user = unicode(right.div.div.div.find('div', class_='userdatabox').p.span.string)
 
     	yield {
     	'title': re.sub(pattern=r'\s', repl='', string=title),
     	'URL': response.url, 
     	'loc': re.sub(pattern=r'\s', repl='', string=loc),
-    	'ID': re.sub(pattern=r'\s', repl='', string=adID)
+    	'ID': re.sub(pattern=r'\s', repl='', string=adID),
+    	'views': views,
+    	'price': price, 
+    	"user name": user 
     	}
     	return 
