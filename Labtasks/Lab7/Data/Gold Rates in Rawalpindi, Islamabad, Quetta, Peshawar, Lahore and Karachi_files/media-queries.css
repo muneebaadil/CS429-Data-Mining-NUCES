@@ -1,0 +1,149 @@
+@media screen and (max-width: 980px) {
+
+	/* pagewrap */
+    body{
+    overflow-x: hidden;
+    }
+
+	#wrapper {
+	  margin:0% 7%!important;
+		width:90% !important;
+	}
+	#shadow {
+		width:95% !important;
+	}
+	/* content */
+	#content {
+        width: 100% !important;
+	}
+    #header{
+      height:auto !important;
+      float:left;
+    }
+    #exchange-rate{
+    overflow: hidden;
+    width: 100% !important;
+    }
+
+   #menu{
+    margin-right: 0 !important;
+    margin-top: 5% !important;
+    width: 85% !important;
+   }
+    #main-content{
+    margin: 0 1% !important;
+    width: 65%;
+    }
+    #table{
+    margin: 2% 1% !important;
+    width: 96.5% !important;
+    }
+    #row{
+    width: 25% !important;
+    }
+    #row ul{
+          width: 100% !important;
+    }
+    #row ul li{
+    float: left;
+    padding: 19% 0 !important;
+    width: 100% !important;
+    }
+
+#orange-row {
+    height: auto !important;
+    margin-top: -2% !important;
+    width: 25% !important;
+}
+    #orange-row ul{
+		width:100% !important;
+    }
+    #orange-row ul li{
+    padding:19% 0 !important;
+    width: 100% !important;
+    }
+    .orange-head{
+    padding: 14% 0 !important;
+    width: 100% !important;
+    }
+.last-li{
+    margin-bottom: -12%;
+}
+button{
+    float: left;
+    margin: 5% 13% !important;
+    padding: 0;
+    width: 24% !important;
+}
+#buttons{
+    padding: 2% !important;
+    width: 96% !important;
+}
+
+	/* sidebar */
+    #sidebar h4 {
+    float: left;
+    height: auto !important;
+    width: 97% !important;
+}
+.side-block iframe {
+    margin: 0 1.5% !important;
+    width: 97%;
+}
+	#block {
+		width: 100% !important;
+	}
+    #block h1{
+    float: left;
+    height: auto;
+    padding: 0.2% 1.2% !important;
+    }
+.side-block{
+  width:100%!important;
+}
+body.plugin {
+    width: 90%!important;
+}
+#footer{
+    padding: 2% 1% !important;
+    width: 98% !important;
+}
+
+#logo{
+    height: auto;
+    width: 25%;
+}
+#logo img{
+    width: 100%;
+
+}
+}
+@media screen and (max-width: 900px) {
+    #main-content{
+    margin: 0 1% !important;
+    width: 98% !important;
+    }
+
+#row {
+    width: 25% !important;
+}
+#orange-row {
+    height: auto !important;
+    margin-top: -2% !important;
+    width: 25% !important;
+}
+#sidebar{
+    margin: 0 1%!important;
+    width: 98%!important;
+}
+#sidebar h4 {
+    float: left;
+    height: auto !important;
+    width: 98.57% !important;
+}
+#sidebar iframe #moneyconverter-control{
+    max-width: 100% !important;
+    width: 100%;
+}
+
+}
