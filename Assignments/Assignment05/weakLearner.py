@@ -39,14 +39,29 @@ class WeakLearner: # A simple weaklearner you used in Decision Trees...
         #print "   "        
         pass
 
-    def train(self,feat, Y):
+    def generateCounts(self, labels):
+        out = np.unique(labels, return_counts=True)
+        return out[1] 
+    
+    def calculateEntropy(self, D):
+        Dprobs = D / (1. * np.sum(D))+1e-16
+        out = np.sum(Dprobs * np.log(Dprobs)) * -1
+        return out
+    
+    def calculateSplitEntropy(self, Dy, Dn):
+        nexamples = (np.sum(Dy)+np.sum(Dn)) * 1.
+        a = (np.sum(Dy)/nexamples)*(self.calculateEntropy(Dy))
+        b = (np.sum(Dn)/nexamples)*(self.calculateEntropy(Dn))
+        return a+b
+    
+    def train(self, X, Y):
         '''
             Trains a weak learner from all numerical attribute for all possible split points for
             possible feature selection
             
             Input:
             ---------
-            feat: a contiuous feature
+            X: dataset
             Y: labels
             
             Returns:
@@ -61,11 +76,15 @@ class WeakLearner: # A simple weaklearner you used in Decision Trees...
 
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
+        scores = np.ones((X.shape[1],)) * np.inf
+        for fidx in xrange(X.shape[1]):
+            evalres = self.evaluate_numerical_attribute(X[:, fidx], Y)
+            scores[fidx] = evalres[1]
         
-            
-        
+        minres=self.evaluate_numerical_attribute(X[:, scores.argmin()], Y)
+        v, score, Xlidx, Xridx = minres
         #---------End of Your Code-------------------------#
-        return score, Xlidx,Xridx
+        return v, score, Xlidx,Xridx
     def evaluate(self,X):
         """
         Evalute the trained weak learner  on the given example...
@@ -99,11 +118,26 @@ class WeakLearner: # A simple weaklearner you used in Decision Trees...
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
         # Same code as you written in DT assignment...
-            
+        nclasses=classes.shape[0]
+        sidx = np.argsort(feat)
+        sf = feat[sidx]
+        sY = Y[sidx]
         
+        midpoints = (sf[:-1]+sf[1:])/2.
+        splitscores = np.zeros((midpoints.shape[0],))
+        
+        for i, splitpoint in enumerate(midpoints):
+            DyClassCounts = self.generateCounts(Y[feat <= splitpoint])
+            DnClassCounts = self.generateCounts(Y[feat > splitpoint])
+            splitscores[i] = self.calculateSplitEntropy(DyClassCounts, DnClassCounts)
+            
+        split = midpoints[splitscores.argmin()]
+        minscore = splitscores.min()
+        Xlidx = np.nonzero(feat <= split)
+        Xridx = np.nonzero(feat > split)
         #---------End of Your Code-------------------------#
             
-        return split,mingain,Xlidx,Xridx
+        return split,minscore,Xlidx,Xridx
 
 class RandomWeakLearner(WeakLearner):  # Axis Aligned weak learner....
     """ An Inherited class to implement Axis-Aligned weak learner using 
@@ -176,38 +210,6 @@ class RandomWeakLearner(WeakLearner):  # Axis Aligned weak learner....
         
         #---------End of Your Code-------------------------#
         return splitvalue, minscore, Xlidx, Xridx
-    def calculateEntropy(self,Y, mship):
-        """
-            calculates the split entropy using Y and mship (logical array) telling which 
-            child the examples are being split into...
-
-            Input:
-            ---------
-                Y: a label array
-                mship: (logical array) telling which child the examples are being split into, whether
-                        each example is assigned to left split or the right one..
-            Returns:
-            ---------
-                entropy: split entropy of the split
-        """
-
-        lexam=Y[mship]
-        rexam=Y[np.logical_not(mship)]
-
-        pleft= len(lexam) / float(len(Y))
-        pright= 1-pleft
-
-        pl= stats.itemfreq(lexam)[:,1] / float(len(lexam)) + np.spacing(1)
-        pr= stats.itemfreq(rexam)[:,1] / float(len(rexam)) + np.spacing(1)
-
-        hl= -np.sum(pl*np.log2(pl)) 
-        hr= -np.sum(pr*np.log2(pr)) 
-
-        sentropy = pleft * hl + pright * hr
-
-        return sentropy
-
-
 
 # build a classifier ax+by+c=0
 class LinearWeakLearner(RandomWeakLearner):  # A 2-dimensional linear weak learner....
