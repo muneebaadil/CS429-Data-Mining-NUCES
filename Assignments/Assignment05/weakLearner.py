@@ -37,7 +37,8 @@ class WeakLearner: # A simple weaklearner you used in Decision Trees...
 
         """
         #print "   "        
-        pass
+        self.splitpoint=None
+        self.fidx=None
 
     def generateCounts(self, labels):
         out = np.unique(labels, return_counts=True)
@@ -83,17 +84,18 @@ class WeakLearner: # A simple weaklearner you used in Decision Trees...
         
         minres=self.evaluate_numerical_attribute(X[:, scores.argmin()], Y)
         v, score, Xlidx, Xridx = minres
+        self.splitpoint=v
+        self.fidx=scores.argmin()
         #---------End of Your Code-------------------------#
         return v, score, Xlidx,Xridx
+
     def evaluate(self,X):
         """
         Evalute the trained weak learner  on the given example...
         """ 
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
-        
-            
-        
+        return True if (X[0, self.fidx] <= self.splitpoint) else False
         #---------End of Your Code-------------------------#
     def evaluate_numerical_attribute(self,feat, Y):
         '''
@@ -145,11 +147,11 @@ class RandomWeakLearner(WeakLearner):  # Axis Aligned weak learner....
 
 
     """
-    def __init__(self, nsplits=+np.inf, nrandfeat=None):
+    def __init__(self, nsplits=None, nrandfeat=None):
         """
         Input:
-            nsplits = How many nsplits to use for each random feature, (if +inf, check all possible splits)
-            nrandfeat = number of random features to test for each node (if None, nrandfeat= sqrt(nfeatures) )
+            nsplits = How many nsplits to use for each random feature
+            nrandfeat = number of random features to test for each node
         """
         WeakLearner.__init__(self) # calling base class constructor...        
         self.nsplits=nsplits
@@ -182,9 +184,21 @@ class RandomWeakLearner(WeakLearner):  # Axis Aligned weak learner....
 
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
+        minscoreyet=np.inf 
+        minresyet=None
+        minfidxyet=-1
+        feattest=np.unique(np.random.randint(low=0, high=X.shape[1], size=(self.nrandfeat)))
         
-            
-        
+        for fidx in feattest:
+            res=self.findBestRandomSplit(X[:, fidx], Y)
+            if (res[1]<minscoreyet):
+                minscoreyet=res[1]
+                minresyet=res
+                minfidxyet=fidx
+
+        self.splitpoint, self.fidx=minresyet[0], fidx
+        minscore, bXl, bXr=minscoreyet, minresyet[2], minresyet[3]
+
         #---------End of Your Code-------------------------#
         return minscore, bXl,bXr
 
@@ -200,14 +214,22 @@ class RandomWeakLearner(WeakLearner):  # Axis Aligned weak learner....
             Y: [n X 1] label vector...
 
         """
-        frange=np.max(feat)-np.min(feat)
 
         #import pdb;         pdb.set_trace()
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
-        
-            
-        
+        splitpoints=np.random.uniform(low=feat.min(), high=feat.max(), size=(self.nsplits))
+
+        splitscores=np.ones_like(splitpoints)*np.inf 
+        for i, splitpoint in enumerate(splitpoints):
+            DyClassCounts = self.generateCounts(Y[feat <= splitpoint])
+            DnClassCounts = self.generateCounts(Y[feat > splitpoint])
+            splitscores[i] = self.calculateSplitEntropy(DyClassCounts, DnClassCounts)
+
+        splitvalue, minscore=splitpoints[splitscores.argmin()], splitscores.min()
+        Xlidx=np.nonzero(feat<=splitvalue)
+        Xridx=np.nonzero(feat>splitvalue)
+
         #---------End of Your Code-------------------------#
         return splitvalue, minscore, Xlidx, Xridx
 

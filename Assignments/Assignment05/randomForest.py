@@ -24,8 +24,7 @@
 import tree as tree
 import numpy as np
 import scipy.stats as stats
-
-
+from collections import defaultdict
 
 class RandomForest:
     ''' Implements the Random Forest For Classification... '''
@@ -112,9 +111,10 @@ class RandomForest:
             
             #-----------------------TODO-----------------------#
             #--------Write Your Code Here ---------------------#
-        
-            
-        
+            while len(self.trees)<self.ntrees:
+                dtnew=tree.DecisionTree(weaklearner=self.weaklearner, nsplits=self.nsplits, nfeattest=self.nfeattest)
+                dtnew.train(X, Y)
+                self.trees.append(dtnew)
             #---------End of Your Code-------------------------#
         
     def predict(self, X):
@@ -138,8 +138,10 @@ class RandomForest:
 
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
-        
-            
-        
+        out=np.zeros((X.shape[0], len(self.trees)))
+        for i, t in enumerate(self.trees):
+            out[:, i]=t.test(X)
+        pclasses=stats.mstats.mode(out, axis=1)
+        return pclasses[0]
         #---------End of Your Code-------------------------#
         

@@ -47,9 +47,8 @@ class Node:
         """
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
-        
-            
-        
+        self.lchild=lchild 
+        self.rchild=rchild
         #---------End of Your Code-------------------------#
 
     def isleaf(self):
@@ -58,9 +57,7 @@ class Node:
         """
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
-        
-            
-        
+        return (self.lchild is None) and (self.rchild is None)
         #---------End of Your Code-------------------------#
     def isless_than_eq(self, X):
         """
@@ -74,7 +71,7 @@ class Node:
         
         # Here you will call the evaluate funciton of weaklearn on
         # the current example and return true or false...
-        
+        return self.wlearner.evaluate(X)
         #---------End of Your Code-------------------------#
 
     def get_str(self):
@@ -92,7 +89,7 @@ class DecisionTree:
         as Splitting Criterion....
     '''
     def __init__(self, exthreshold=5, maxdepth=10,
-     weaklearner="Conic", pdist=False, nsplits=10, nfeattest=None):        
+     weaklearner="Conic", pdist=False, nsplits=10, nfeattest=None, purityp=.95):        
         ''' 
         Input:
         -----------------
@@ -109,6 +106,7 @@ class DecisionTree:
         self.nsplits=nsplits
         self.pdist=pdist
         self.nfeattest=nfeattest
+        self.purityp=purityp
         assert (weaklearner in ["Conic", "Linear","Axis-Aligned","Axis-Aligned-Random"])
         pass
     def getWeakLearner(self):
@@ -122,6 +120,12 @@ class DecisionTree:
             return wl.RandomWeakLearner(self.nsplits,self.nfeattest)
 
         pass
+
+    def getPurityResult(self, Y):
+        classes, counts = np.unique(Y, return_counts=True)
+        probs = counts/(1.*np.sum(counts))
+        return probs.max(), classes[probs.argmax()]
+
     def train(self, X, Y):
         ''' Train Decision Tree using the given 
             X [m x d] data matrix and Y labels matrix
@@ -139,9 +143,7 @@ class DecisionTree:
         ## now go and train a model for each class...
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
-        
-            
-        
+        self.tree=self.build_tree(X, Y, self.maxdepth)
         #---------End of Your Code-------------------------#
     
     def build_tree(self, X, Y, depth):
@@ -161,12 +163,22 @@ class DecisionTree:
 
         """
         nexamples, nfeatures=X.shape
-      
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
-        
-            
-        
+        purityres=self.getPurityResult(Y)
+
+        if (depth==0) or (X.shape[0]<self.exthreshold) or (purityres[0]>self.purityp):
+            node = Node(klasslabel=purityres[1], pdistribution=purityres[0])
+        else:
+            wl=self.getWeakLearner()
+            minscore, leftidx, rightidx=wl.train(X, Y)
+
+            lchild=self.build_tree(X[leftidx], Y[leftidx], depth-1)
+            rchild=self.build_tree(X[rightidx], Y[rightidx], depth-1)
+
+            #make a node and set its weaklearner and children.
+            node=Node(score=minscore, wlearner=wl)
+            node.set_childs(lchild, rchild)
         #---------End of Your Code-------------------------#
         
         return node
@@ -222,9 +234,10 @@ class DecisionTree:
 
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
-        
-            
-        
+        if node.isleaf()==True:
+            return node.klasslabel
+        else:
+            return self._predict(node.lchild, X) if (node.isless_than_eq(X)) else self._predict(node.rchild, X)            
         #---------End of Your Code-------------------------#
     
 
