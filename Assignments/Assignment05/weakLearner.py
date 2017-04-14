@@ -277,9 +277,8 @@ class LinearWeakLearner(RandomWeakLearner):  # A 2-dimensional linear weak learn
             nsplits = How many splits to use for each choosen line set of parameters...
             
         """
-        RandomWeakLearner.__init__(self,nsplits, nrandfeat=2)
-        self.fidx, self.splitpoints=None, None 
-
+        RandomWeakLearner.__init__(self,nsplits)
+        
         pass
 
     def train(self,X, Y):
@@ -303,36 +302,101 @@ class LinearWeakLearner(RandomWeakLearner):  # A 2-dimensional linear weak learn
 
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
-        randfeat=np.random.choice(a=np.arange(0,X.shape[1]), size=(self.nrandfeat,),
-            replace=False)
-        Xnew=X[:, randfeat]
-        randcoeffs=np.random.uniform(low=-3, high=3, size=(randfeat.shape[0]+1,self.nsplits))
-
-        mships=Xnew.dot(randcoeffs[:-1,:])>=(randcoeffs[-1,:])
+        randcoeffs=np.random.uniform(low=-3, high=+3, size=(nfeatures+1, self.nsplits))
+        mships=(X.dot(randcoeffs[:-1, :])+randcoeffs[-1,:])>=0
         
-        splitscores=np.ones((self.nsplits,))*np.inf
+        splitscores=np.zeros(shape=(self.nsplits,))
         for idx in xrange(self.nsplits):
-            splitscores[idx]=self.calculateEntropy(Y, mships[:, idx])
-
+            splitscores[idx]=self.calculateEntropy(Y, mships[:,idx])
+        
         minscore=splitscores.min()
         bXl=np.nonzero(mships[:, splitscores.argmin()])
         bXr=np.nonzero(np.logical_not(mships[:, splitscores.argmin()]))
-
-        self.fidx=randfeat; 
+        
         self.splitpoints=randcoeffs[:, splitscores.argmin()]
-        #---------End of Your Code-------------------------#
-
+        
         return minscore, bXl, bXr
-
-
-    
 
     def evaluate(self,X):
         """
         Evalute the trained weak learner  on the given example...
         """ 
         #-----------------------TODO-----------------------#
-        #--------Write Your Code Here ---------------------#     
-        return ((X[0, 0]*self.splitpoints[0])+(X[0, 1]*self.splitpoints[1])+self.splitpoints[2])>0
+        #--------Write Your Code Here ---------------------#
+        out=X[0,:].dot(self.splitpoints[:-1])+self.splitpoints[-1]
+        return True if (out>0) else False
+        #return True if (X.dot(self.splitpoint[:-1])>self.splitpoint[-1]) else False
         #---------End of Your Code-------------------------#
         
+#build a classifier a*x^2+b*y^2+c*x*y+ d*x+e*y+f
+class ConicWeakLearner(RandomWeakLearner):  # A 2-dimensional linear weak learner....
+    """ An Inherited class to implement 2D Conic based weak learner using 
+        a random set of features from the given set of features...
+
+
+    """
+    def __init__(self, nsplits=10):
+        """
+        Input:
+            nsplits = How many splits to use for each choosen line set of parameters...
+            
+        """
+        RandomWeakLearner.__init__(self,nsplits,nrandfeat=2)
+        self.fidx, self.splitpoints=None, None
+        pass
+
+    
+    def train(self,X, Y):
+        '''
+            Trains a weak learner from all numerical attribute for all possible 
+            
+            Input:
+            ---------
+            X: a [m x d] training matrix...
+            Y: labels
+            
+            Returns:
+            ----------
+            v: splitting threshold
+            score: splitting score
+            Xlidx: Index of examples belonging to left child node
+            Xridx: Index of examples belonging to right child node
+            
+        '''
+        nexamples,nfeatures=X.shape
+        randfeat=np.random.choice(a=np.arange(0,X.shape[1]), size=(self.nrandfeat,),
+            replace=False)
+        Xnew=np.zeros((nexamples, 5))
+
+        Xnew[:, 0]=X[:, randfeat[0]]**2
+        Xnew[:, 1]=X[:, randfeat[1]]**2
+        Xnew[:, 2]=X[:, randfeat[0]]*X[:, randfeat[1]]
+        Xnew[:, 3]=X[:, randfeat[0]]
+        Xnew[:, 4]=X[:, randfeat[1]]
+
+        randcoeffs=np.random.uniform(low=-3,high=+3, size=(Xnew.shape[1]+1, self.nsplits))
+
+        mships=(Xnew.dot(randcoeffs[:-1, :])+randcoeffs[-1,:])>=0
+        splitscores=np.zeros(shape=(self.nsplits,))
+        for idx in xrange(self.nsplits):
+            splitscores[idx]=self.calculateEntropy(Y, mships[:, idx])
+
+        minscore=splitscores.min()
+        bXl=np.nonzero(mships[:, splitscores.argmin()])
+        bXr=np.nonzero(np.logical_not(mships[:, splitscores.argmin()]))
+        
+        self.fidx=randfeat
+        self.splitpoints=randcoeffs[:, splitscores.argmin()]
+
+        return minscore, bXl, bXr
+
+    def evaluate(self,X):
+        """
+        Evalute the trained weak learner  on the given example...
+        """ 
+        #print X.shape 
+        a,b=self.fidx[0], self.fidx[1]
+        out=(((X[0, a]**2)*self.splitpoints[0])+((X[0, b]**2)*self.splitpoints[1])+\
+                (X[0, a]*X[0,b]*self.splitpoints[2])+(X[0, a]*self.splitpoints[3])+(X[0, b]*self.splitpoints[4])+\
+                (self.splitpoints[5])) >= 0
+        return out
