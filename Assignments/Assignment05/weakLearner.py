@@ -44,15 +44,15 @@ class WeakLearner: # A simple weaklearner you used in Decision Trees...
         out = np.unique(labels, return_counts=True)
         return out[1] 
     
-    def calculateEntropy(self, D):
+    def getEntropy(self, D):
         Dprobs = D / (1. * np.sum(D))+1e-16
         out = np.sum(Dprobs * np.log(Dprobs)) * -1
         return out
     
     def calculateSplitEntropy(self, Dy, Dn):
         nexamples = (np.sum(Dy)+np.sum(Dn)) * 1.
-        a = (np.sum(Dy)/nexamples)*(self.calculateEntropy(Dy))
-        b = (np.sum(Dn)/nexamples)*(self.calculateEntropy(Dn))
+        a = (np.sum(Dy)/nexamples)*(self.getEntropy(Dy))
+        b = (np.sum(Dn)/nexamples)*(self.getEntropy(Dn))
         return a+b
     
     def train(self, X, Y):
