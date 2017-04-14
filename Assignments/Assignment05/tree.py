@@ -175,7 +175,11 @@ class DecisionTree:
             wl=self.getWeakLearner()
             minscore, leftidx, rightidx=wl.train(X, Y)
 
-            print 'creating left node = {}, right node = {}'.format(X[leftidx].shape, X[rightidx].shape)
+            if ((X[leftidx].size==0) or (X[rightidx].size==0)):
+                node=Node(klasslabel=purityres[1], pdistribution=purityres[0])
+                return node; 
+                
+            print 'currnode = {}, creating left node = {}, right node = {}'.format(X.shape, X[leftidx].shape, X[rightidx].shape)
 
             lchild=self.build_tree(X[leftidx], Y[leftidx], depth-1)
             rchild=self.build_tree(X[rightidx], Y[rightidx], depth-1)
