@@ -107,12 +107,14 @@ class RandomForest:
             if self.scalefeat:
                 X=self.applyScaling(X)
 
+            #print X.max(axis=0), X.min(axis=0)
             self.trees=[]
             
             #-----------------------TODO-----------------------#
             #--------Write Your Code Here ---------------------#
             while len(self.trees)<self.ntrees:
                 dtnew=tree.DecisionTree(weaklearner=self.weaklearner, nsplits=self.nsplits, nfeattest=self.nfeattest)
+                print 'training new tree'
                 dtnew.train(X, Y)
                 self.trees.append(dtnew)
             #---------End of Your Code-------------------------#

@@ -6,6 +6,7 @@
 import weakLearner as wl
 import numpy as np
 import scipy.stats as stats
+import pdb
 
 
 #---------------Instructions------------------#
@@ -163,20 +164,22 @@ class DecisionTree:
 
         """
         nexamples, nfeatures=X.shape
+
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
         purityres=self.getPurityResult(Y)
 
-        if (depth==0) or (X.shape[0]<self.exthreshold) or (purityres[0]>self.purityp):
+        if ((depth==0) or (nexamples<self.exthreshold) or (purityres[0]>self.purityp)):
             node = Node(klasslabel=purityres[1], pdistribution=purityres[0])
         else:
             wl=self.getWeakLearner()
             minscore, leftidx, rightidx=wl.train(X, Y)
 
+            print 'creating left node = {}, right node = {}'.format(X[leftidx].shape, X[rightidx].shape)
+
             lchild=self.build_tree(X[leftidx], Y[leftidx], depth-1)
             rchild=self.build_tree(X[rightidx], Y[rightidx], depth-1)
 
-            #make a node and set its weaklearner and children.
             node=Node(score=minscore, wlearner=wl)
             node.set_childs(lchild, rchild)
         #---------End of Your Code-------------------------#

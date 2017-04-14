@@ -233,6 +233,37 @@ class RandomWeakLearner(WeakLearner):  # Axis Aligned weak learner....
         #---------End of Your Code-------------------------#
         return splitvalue, minscore, Xlidx, Xridx
 
+    def calculateEntropy(self,Y, mship):
+        """
+            calculates the split entropy using Y and mship (logical array) telling which 
+            child the examples are being split into...
+
+            Input:
+            ---------
+                Y: a label array
+                mship: (logical array) telling which child the examples are being split into, whether
+                        each example is assigned to left split or the right one..
+            Returns:
+            ---------
+                entropy: split entropy of the split
+        """
+
+        lexam=Y[mship]
+        rexam=Y[np.logical_not(mship)]
+
+        pleft= len(lexam) / float(len(Y))
+        pright= 1-pleft
+
+        pl= stats.itemfreq(lexam)[:,1] / float(len(lexam)) + np.spacing(1)
+        pr= stats.itemfreq(rexam)[:,1] / float(len(rexam)) + np.spacing(1)
+
+        hl= -np.sum(pl*np.log2(pl)) 
+        hr= -np.sum(pr*np.log2(pr)) 
+
+        sentropy = pleft * hl + pright * hr
+
+        return sentropy
+
 # build a classifier ax+by+c=0
 class LinearWeakLearner(RandomWeakLearner):  # A 2-dimensional linear weak learner....
     """ An Inherited class to implement 2D line based weak learner using 
@@ -246,8 +277,9 @@ class LinearWeakLearner(RandomWeakLearner):  # A 2-dimensional linear weak learn
             nsplits = How many splits to use for each choosen line set of parameters...
             
         """
-        RandomWeakLearner.__init__(self,nsplits)
-        
+        RandomWeakLearner.__init__(self,nsplits, nrandfeat=2)
+        self.fidx, self.splitpoints=None, None 
+
         pass
 
     def train(self,X, Y):
@@ -271,9 +303,23 @@ class LinearWeakLearner(RandomWeakLearner):  # A 2-dimensional linear weak learn
 
         #-----------------------TODO-----------------------#
         #--------Write Your Code Here ---------------------#
+        randfeat=np.random.choice(a=np.arange(0,X.shape[1]), size=(self.nrandfeat,),
+            replace=False)
+        Xnew=X[:, randfeat]
+        randcoeffs=np.random.uniform(low=-3, high=3, size=(randfeat.shape[0]+1,self.nsplits))
+
+        mships=Xnew.dot(randcoeffs[:-1,:])>=(randcoeffs[-1,:])
         
-            
-        
+        splitscores=np.ones((self.nsplits,))*np.inf
+        for idx in xrange(self.nsplits):
+            splitscores[idx]=self.calculateEntropy(Y, mships[:, idx])
+
+        minscore=splitscores.min()
+        bXl=np.nonzero(mships[:, splitscores.argmin()])
+        bXr=np.nonzero(np.logical_not(mships[:, splitscores.argmin()]))
+
+        self.fidx=randfeat; 
+        self.splitpoints=randcoeffs[:, splitscores.argmin()]
         #---------End of Your Code-------------------------#
 
         return minscore, bXl, bXr
@@ -286,9 +332,7 @@ class LinearWeakLearner(RandomWeakLearner):  # A 2-dimensional linear weak learn
         Evalute the trained weak learner  on the given example...
         """ 
         #-----------------------TODO-----------------------#
-        #--------Write Your Code Here ---------------------#
-        
-            
-        
+        #--------Write Your Code Here ---------------------#     
+        return ((X[0, 0]*self.splitpoints[0])+(X[0, 1]*self.splitpoints[1])+self.splitpoints[2])>0
         #---------End of Your Code-------------------------#
         
