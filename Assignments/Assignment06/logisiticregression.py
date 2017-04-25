@@ -17,17 +17,21 @@ class LogisticRegression(Classifier):
         Classifier.__init__(self,lembda)                
         
         pass
-    def sigmoid(self,z):
+    def sigmoid(self,arg):
         """
             Compute the sigmoid function 
             Input:
-                z can be a scalar or a matrix
+                arg can be a scalar or a matrix
             Returns:
                 sigmoid of the input variable z
         """
 
         # Your Code here
-        return        
+        toreturn = -1 * arg
+        toreturn = np.exp(toreturn)
+        toreturn += 1
+        toreturn = 1 / toreturn 
+        return toreturn 
     
     
     def hypothesis(self, X,theta):
@@ -42,7 +46,7 @@ class LogisticRegression(Classifier):
         '''
         
         # Your Code here
-        return
+        return self.sigmoid(np.dot(X, theta))
 
         
     def cost_function(self, X,Y, theta):
@@ -60,7 +64,16 @@ class LogisticRegression(Classifier):
     
     
         # Your Code here
-        return
+        m, n = X.shape
+        
+        termA = Y * np.log(self.sigmoid(np.dot(X, theta)))
+        termB = (1 - Y) * np.log(1 - self.sigmoid(np.dot(X, theta)))
+        cost = (np.sum(termA + termB)) 
+        #print cost 
+        datacost = -1 * cost / m; 
+        regcost = self.lembda * np.sum(np.square(theta))
+        cost = datacost + regcost
+        return cost
 
     def derivative_cost_function(self,X,Y,theta):
         '''
@@ -78,6 +91,12 @@ class LogisticRegression(Classifier):
         '''
         
         # Your Code here
+        m, n = X.shape
+        toalter = np.dot(X.transpose(), (self.sigmoid(np.dot(X, theta))) - (Y))
+        datagradient = toalter / m
+        reggradient = self.lembda*theta
+        gradient = datagradient + reggradient 
+        return gradient 
         return
 
     def train(self, X, Y, optimizer):
@@ -98,7 +117,7 @@ class LogisticRegression(Classifier):
         
         # Your Code here 
         # Use optimizer here
-
+        self.theta=optimizer.gradient_descent(X, Y, self.cost_function, self.derivative_cost_function)
         return
     
     def predict(self, X):

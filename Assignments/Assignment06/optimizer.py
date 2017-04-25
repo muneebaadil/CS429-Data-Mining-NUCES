@@ -110,4 +110,17 @@ class Optimizer:
         
         
         # Your Code here
-        return
+        nexamples, nfeats = X.shape 
+        print 'Yshape =', Y.shape
+        thetas = np.random.uniform(size=(nfeats,))
+        losshist = []
+        losshist.append(cost_function(X, Y, thetas))
+        numiters = 0 
+        while numiters < self.maxniter: 
+            thetas = thetas - (self.alpha * derivative_cost_function(X, Y, thetas))
+            losshist.append(cost_function(X, Y, thetas))
+            
+            if (self.plot_cf and numiters%20==0):
+                plt.plot(losshist)
+            numiters += 1
+        return thetas
