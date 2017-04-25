@@ -3,6 +3,7 @@
 # ---------------------------------------------#
 
 from classifier import *
+import pdb
 
 
 # Note: Here the bias term is considered as the last added feature
@@ -28,7 +29,7 @@ class SVM(Classifier):
         '''
 
         # Your Code here
-        return       
+        return X.dot(theta)
 
     def cost_function(self, X, Y, theta):
         '''
@@ -45,7 +46,14 @@ class SVM(Classifier):
 
         
         # Your Code here
-        return
+        datacost = 1-(X.dot(theta)*Y)
+        datacost[datacost<0] = 0 
+        datacost = np.sum(datacost)*(1./(2*X.shape[0]))
+        
+        regcost = (self.lembda/2.) * (np.sum(np.square(theta)))
+        
+        cost = datacost + regcost
+        return cost
 
     def derivative_cost_function(self, X, Y, theta):
         '''
@@ -61,10 +69,18 @@ class SVM(Classifier):
             ------
                 partial_thetas: a d X 1-dimensional vector of partial derivatives of cost function w.r.t parameters..
         '''
-        nexamples = float(X.shape[0])
+        nexamples, nfeats = float(X.shape[0]), X.shape[1]
 
         # Your Code here
-        return
+        fullgrads = X*(-1*Y)
+        conditionvect = Y*self.hypothesis(X,theta)
+        fullgrads[conditionvect[:,0] >= 1, :] = np.zeros((nfeats,))
+        datagrad = np.sum(fullgrads, axis=0, keepdims=True) * (1./(2.*nexamples))
+        
+        reggrad = self.lembda*theta
+        grad = datagrad.T+reggrad
+        #pdb.set_trace()
+        return grad 
 
     def train(self, X, Y, optimizer):
         ''' Train classifier using the given
@@ -85,6 +101,7 @@ class SVM(Classifier):
         nexamples, nfeatures = X.shape
         
         # Your Code here
+        self.theta = optimizer.gradient_descent(X, Y, self.cost_function, self.derivative_cost_function)
         return
         
 
@@ -103,4 +120,8 @@ class SVM(Classifier):
         """
 
         # Your Code here
-        return
+        hypo=self.hypothesis(X, self.theta)[:,0]
+        out = np.zeros((X.shape[0],))
+        out[hypo>0] = +1
+        out[hypo<0] = -1
+        return out 
