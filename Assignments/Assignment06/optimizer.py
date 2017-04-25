@@ -9,6 +9,7 @@
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+import pdb
 
 
 class Optimizer:
@@ -110,9 +111,9 @@ class Optimizer:
         
         
         # Your Code here
+        #pdb.set_trace()
         nexamples, nfeats = X.shape 
-        print 'Yshape =', Y.shape
-        thetas = np.random.uniform(size=(nfeats,))
+        thetas = np.random.uniform(size=(nfeats,1))
         losshist = []
         losshist.append(cost_function(X, Y, thetas))
         numiters = 0 
@@ -120,7 +121,9 @@ class Optimizer:
             thetas = thetas - (self.alpha * derivative_cost_function(X, Y, thetas))
             losshist.append(cost_function(X, Y, thetas))
             
-            if (self.plot_cf and numiters%20==0):
+            if (self.plotcf==True and numiters%20==0):
+                print numiters, 
                 plt.plot(losshist)
             numiters += 1
+           
         return thetas

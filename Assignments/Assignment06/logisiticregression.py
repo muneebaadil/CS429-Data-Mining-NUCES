@@ -5,6 +5,7 @@
 # A Logistic Regression algorithm with regularized weights...
 
 from classifier import *
+import numpy as np
 
 #Note: Here the bias term is considered as the last added feature 
 
@@ -27,7 +28,7 @@ class LogisticRegression(Classifier):
         """
 
         # Your Code here
-        toreturn = -1 * arg
+        toreturn = -1 * arg.astype(float)
         toreturn = np.exp(toreturn)
         toreturn += 1
         toreturn = 1 / toreturn 
@@ -139,4 +140,5 @@ class LogisticRegression(Classifier):
         
         
         # Your Code here
-        return
+        pclass=self.sigmoid(X.dot(self.theta)) > .5
+        return pclass
