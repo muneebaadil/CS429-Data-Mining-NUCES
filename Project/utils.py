@@ -144,5 +144,12 @@ def CreateWeatherVects(foldername, outfolder):
         wdf.groupby('Timeslot').Weather.mean().astype(int).to_csv(outfolder+'wmatrix_'+fname.split('_')[2]+'.csv')
     return
 
-def
-    
+def ConstructWeatherMatrix(foldername):
+    fnames = [x for x in sorted(os.listdir(foldername)) if x[:7]=='wmatrix']
+    dfs = []
+    for fname in fnames:
+        df= pd.read_csv(foldername+fname, header=None, names=['Timeslot', 'Weather'],
+                          index_col='Timeslot')
+        dfs.append(df)
+        
+    return pd.concat(dfs, axis=1)    
