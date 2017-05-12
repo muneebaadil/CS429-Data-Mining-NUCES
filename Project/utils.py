@@ -133,4 +133,16 @@ def WriteOnKaggleFormat(Xtestpd, Ytest, date):
     
 def MeanAbsoluteError(truths, preds): 
     return np.mean(np.abs(truths-preds))
+
+def CreateWeatherVects(foldername, outfolder):
+    fnames = [x for x in sorted(os.listdir(foldername)) if x[0]!='.']
+    for fname in fnames: 
+        wdf = pd.read_csv(foldername+fname, sep='\t', 
+                          names=['Timestamp', 'Weather','Temperature', 'PM2.5'], header=None)
+        wdf['Timeslot']=wdf.Timestamp.apply(utils.totimeslot)
+        print fname 
+        wdf.groupby('Timeslot').Weather.mean().astype(int).to_csv(outfolder+'wmatrix_'+fname.split('_')[2]+'.csv')
+    return
+
+def
     
