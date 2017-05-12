@@ -116,3 +116,18 @@ def PrepareTestExamples(setname, ofname, wfname, outname):
 
     orderdf.to_csv(setname+'DesignMatrices/'+outname, sep=',')
     return orderdf
+
+def WriteOnKaggleFormat(Xtestpd, Ytest, date):
+    myout = pd.DataFrame(Ytest, columns=['gap'])
+    myout['district_date_slot'] = Xtestpd['RegionHash'].values
+    myout['date'] = date
+    #myout
+    myout['district_date_slot'] = myout.district_date_slot.astype(str).str.cat(Xtestpd.Date.astype(str), sep='_')
+    myout['district_date_slot'] = myout.district_date_slot.astype(str).str.cat(Xtestpd.Timeslot.astype(str), sep='-')
+    #myout=myout.set_index('district_date_slot')
+    
+    kaggleout = pd.read_csv('sample.csv', index_col='district_date_slot')
+    kaggleout.ix[myout['district_date_slot'].values] = myout['gap'].values[:, np.newaxis]
+    #kaggleout.loc[myout['district_date_slot'].values].gap = myout.gap.values
+    kaggleout.to_csv('sample.csv')
+    
