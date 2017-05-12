@@ -34,13 +34,13 @@ def LoadDataset(basepath):
     Xs, supplies, demands = [], [], []
     for fname in fnames: 
         table = pd.read_csv(basepath+fname)
-        supplies.append(table['Supply'].values)
-        demands.append(table['Demand'].values)
-        Xs.append(table.drop(['Supply', 'Demand'], axis=1).values)
+        supplies.append(table['Supply'])
+        demands.append(table['Demand'])
+        Xs.append(table.drop(['Supply', 'Demand'], axis=1))
         
-    supply = np.concatenate(supplies)
-    demand = np.concatenate(demands)
-    X = np.concatenate(Xs)
+    supply = pd.concat(supplies)
+    demand = pd.concat(demands)
+    X = pd.concat(Xs)
 
     return X, supply, demand
 
