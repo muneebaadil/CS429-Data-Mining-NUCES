@@ -139,17 +139,21 @@ def CreateWeatherVects(foldername, outfolder):
     for fname in fnames: 
         wdf = pd.read_csv(foldername+fname, sep='\t', 
                           names=['Timestamp', 'Weather','Temperature', 'PM2.5'], header=None)
-        wdf['Timeslot']=wdf.Timestamp.apply(utils.totimeslot)
+        wdf['Timeslot']=wdf.Timestamp.apply(totimeslot)
         print fname 
         wdf.groupby('Timeslot').Weather.mean().astype(int).to_csv(outfolder+'wmatrix_'+fname.split('_')[2]+'.csv')
     return
 
-def ConstructWeatherMatrix(foldername):
-    fnames = [x for x in sorted(os.listdir(foldername)) if x[:7]=='wmatrix']
+def ConstructWeatherMatrix(foldername, fillmethod='backfill'):
+    fnames = [x for x in sorted(os.listdir(foldername)) if x[:7]=='wmatrix' and x[-4:]=='.csv']
     dfs = []
     for fname in fnames:
-        df= pd.read_csv(foldername+fname, header=None, names=['Timeslot', 'Weather'],
-                          index_col='Timeslot')
+        #print 'fname = {}'.format(fname)
+        df= pd.read_csv(foldername+fname, header=None, names=['Timeslot', fname.split('_')[1]], index_col='Timeslot')
         dfs.append(df)
         
-    return pd.concat(dfs, axis=1)    
+    df = pd.concat(dfs, axis=1)
+    if fillmethod is not None:
+        df=df.fillna(method=fillmethod, axis=1)
+    return df
+    pass
