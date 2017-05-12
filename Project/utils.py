@@ -131,3 +131,6 @@ def WriteOnKaggleFormat(Xtestpd, Ytest, date):
     #kaggleout.loc[myout['district_date_slot'].values].gap = myout.gap.values
     kaggleout.to_csv('sample.csv')
     
+def MeanAbsoluteError(truths, preds): 
+    return np.mean(np.abs(truths-preds))
+    
