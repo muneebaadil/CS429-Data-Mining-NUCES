@@ -157,3 +157,11 @@ def ConstructWeatherMatrix(foldername, fillmethod='backfill'):
         df=df.fillna(method=fillmethod, axis=1)
     return df
     pass
+
+def one_hot_encode(x, n_classes):
+    """
+    One hot encode a list of sample labels. Return a one-hot encoded vector for each label.
+    : x: List of sample Labels
+    : return: Numpy array of one-hot encoded labels
+     """
+    return np.eye(n_classes)[x]
