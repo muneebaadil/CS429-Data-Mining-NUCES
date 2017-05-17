@@ -56,7 +56,7 @@ def ConstructTrainingSet(setname, verbose=True):
         
         date = ofname.split('_')[-1]
         outname = setname+'DesignMatrices/'+date+'.csv'
-        utils.ConstructTrainingDay(ofname, wfname, poifname, clustermapfname, date, outname)
+        ConstructTrainingDay(ofname, wfname, poifname, clustermapfname, date, outname)
         if verbose==True:
             print 'Construction for training day =', date
     pass
@@ -85,12 +85,12 @@ def ConstructTrainingDay(orderfname, weatherfname, poifname, clustermapfname, da
     #Adding temperature info, and pollution information. 
     orderdf['Temperature'] = (weatherdf.groupby('timeslot')['temperature'].mean()).ix[orderdf['Timeslot'].values].values 
     orderdf['PM2.5'] = (weatherdf.groupby('timeslot')['pm2.5'].mean()).ix[orderdf['Timeslot'].values].values
+    orderdf['Date'] = date
     
     #Constructing a design matrix to store 
-    designMatrix = (orderdf.groupby(['StartRegionID', 'Timeslot', 'Weather', 'Temperature', 'PM2.5']))['DriverID'].agg({
+    designMatrix = (orderdf.groupby(['StartRegionID', 'Timeslot', 'Weather', 'Temperature', 'PM2.5', 'Date']))['DriverID'].agg({
                     'Demand': 'count', 'Supply': lambda x:np.sum(x!='NULL')})
     
-    designMatrix['Date'] = date
     designMatrix.to_csv(outname, sep=',')
     return designMatrix
 
@@ -100,10 +100,11 @@ getregid = lambda x: x.split(',')[2]
 def ConstructWeatherVectors(foldername, outfolder):
     fnames = [x for x in sorted(os.listdir(foldername)) if x[0]!='.']
     for fname in fnames: 
+        print 'fname =', fname
         wdf = pd.read_csv(foldername+fname, sep='\t', 
                           names=['Timestamp', 'Weather','Temperature', 'PM2.5'], header=None)
         wdf['Timeslot']=wdf.Timestamp.apply(totimeslot)
-        print fname 
+        
         wdf.groupby('Timeslot').Weather.mean().astype(int).to_csv(outfolder+'wvector_'+fname.split('_')[2]+'.csv')
     return
 
@@ -121,13 +122,23 @@ def LoadWeatherMatrix(foldername, fillmethod='backfill'):
     return df
     pass
 
-def PrepareTestExamples(setname, ofname, wfname, outname):
-    #Defining all file names  
-    weatherfname = setname + 'weather_data/' + wfname
-    orderfname = setname + 'order_data/' + ofname
+def ConstructTestSet(setname, verbose=True):
+    ofnames = [setname+'order_data/'+x for x in sorted(os.listdir(setname+'order_data/')) if x[0]!='.']
+    wfnames = [setname+'weather_data/'+x for x in sorted(os.listdir(setname+'weather_data/')) if x[0]!='.']
     poifname = setname + 'poi_data/poi_data'
     clustermapfname = setname + 'cluster_map/cluster_map'
+    
+    for ofname, wfname in zip(ofnames, wfnames):
+        
+        date = ofname.split('_')[-1]
+        outname = setname+'DesignMatrices/'+date+'.csv'
+        ConstructTestDay(ofname, wfname, poifname, clustermapfname, date, outname)
+        if verbose==True:
+            print 'Construction for training day =', date
+    pass
 
+def ConstructTestDay(orderfname, weatherfname, poifname, clustermapfname, date, outname):
+    
     #Reading all files for the filename given as argument 
     orderdf = pd.read_csv(orderfname, sep=' ', header=None)
     weatherdf = pd.read_csv(weatherfname, sep='\t', header=None, na_filter=False, 
@@ -135,20 +146,22 @@ def PrepareTestExamples(setname, ofname, wfname, outname):
     clustermapdf = pd.read_csv(clustermapfname, sep='\t', 
                                names=['RegionHash', 'RegionID'], index_col = 0)
     
-    orderdf['Timeslot'] = orderdf[1].apply(totimeslot)
     orderdf['RegionHash'] = orderdf[0].apply(getregid)
-    orderdf['Date'] = orderdf[0].apply(getdate)
     orderdf['RegionID'] = clustermapdf.ix[orderdf['RegionHash'].values].values[:,0]
+    orderdf['Timeslot'] = orderdf[1].apply(totimeslot)
+    orderdf['Date'] = orderdf[0].apply(getdate)
+    #orderdf['RegionID'] = clustermapdf.ix[orderdf['RegionHash'].values].values[:,0]
 
     weatherdf['timeslot'] = weatherdf['time'].apply(totimeslot)
 
     orderdf['Weather'] = weatherdf.groupby('timeslot')['weather'].mean().ix[orderdf['Timeslot'].values].values
     orderdf['Temperature'] = (weatherdf.groupby('timeslot')['temperature'].mean()).ix[orderdf['Timeslot'].values].values
     orderdf['PM2.5'] = (weatherdf.groupby('timeslot')['pm2.5'].mean()).ix[orderdf['Timeslot'].values].values
+    orderdf['Date'] = orderdf[0].apply(getdate)
     
-    orderdf = orderdf.drop([0, 1], axis=1)
+    orderdf = orderdf.drop([0, 1, 'RegionHash'], axis=1)
 
-    orderdf.to_csv(setname+'DesignMatrices/'+outname, sep=',')
+    orderdf.to_csv(outname, sep=',',index=False)
     return orderdf
 
 def WriteOnKaggleFormat(Xtestpd, Ytest, date):
