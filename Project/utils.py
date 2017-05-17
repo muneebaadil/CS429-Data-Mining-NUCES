@@ -28,7 +28,7 @@ def SplitByRegion(X, supply, demand, splitfrac):
     
     return Xtrain, supplyTrain, demandTrain, Xval, supplyVal, demandVal
 
-def LoadDataset(basepath):
+def LoadTrainingSet(basepath):
     fnames = [x for x in sorted(os.listdir(basepath)) if x[0]!='.']
     #X, supply, demand = None, None, None
     Xs, supplies, demands = [], [], []
@@ -46,13 +46,22 @@ def LoadDataset(basepath):
 
 totimeslot = lambda x: ((int(x[-5:-3]) + (int(x[-8:-6])*60))//10)+1
 
-def PrepareFeatureVector(setname, ofname, wfname, outname):
-    #Defining all names
-    weatherfname = setname + 'weather_data/' + wfname
-    orderfname = setname + 'order_data/' + ofname
+def ConstructTrainingSet(setname, verbose=True):
+    ofnames = [setname+'order_data/'+x for x in sorted(os.listdir('./training_set/order_data/')) if x[0]!='.']
+    wfnames = [setname+'weather_data/'+x for x in sorted(os.listdir('./training_set/weather_data/')) if x[0]!='.']
     poifname = setname + 'poi_data/poi_data'
     clustermapfname = setname + 'cluster_map/cluster_map'
     
+    for ofname, wfname in zip(ofnames, wfnames):
+        
+        date = ofname.split('_')[-1]
+        outname = setname+'DesignMatrices/'+date+'.csv'
+        utils.ConstructTrainingDay(ofname, wfname, poifname, clustermapfname, date, outname)
+        if verbose==True:
+            print 'Construction for training day =', date
+    pass
+
+def ConstructTrainingDay(orderfname, weatherfname, poifname, clustermapfname, date, outname):    
     #Reading all files for the day given as argument
     orderdf = pd.read_csv(orderfname, sep='\t', header=None, na_filter=False, names=['OrderID', 'DriverID',
                           'PassengerID', 'StartRegionHash', 'DestRegionHash', 'Price', 'Time'], index_col = 0)
@@ -81,11 +90,36 @@ def PrepareFeatureVector(setname, ofname, wfname, outname):
     designMatrix = (orderdf.groupby(['StartRegionID', 'Timeslot', 'Weather', 'Temperature', 'PM2.5']))['DriverID'].agg({
                     'Demand': 'count', 'Supply': lambda x:np.sum(x!='NULL')})
     
-    designMatrix.to_csv(setname+'DesignMatrices/'+outname, sep=',')
+    designMatrix['Date'] = date
+    designMatrix.to_csv(outname, sep=',')
     return designMatrix
 
 getdate = lambda x: x.split(',')[-1]
 getregid = lambda x: x.split(',')[2]
+
+def ConstructWeatherVectors(foldername, outfolder):
+    fnames = [x for x in sorted(os.listdir(foldername)) if x[0]!='.']
+    for fname in fnames: 
+        wdf = pd.read_csv(foldername+fname, sep='\t', 
+                          names=['Timestamp', 'Weather','Temperature', 'PM2.5'], header=None)
+        wdf['Timeslot']=wdf.Timestamp.apply(totimeslot)
+        print fname 
+        wdf.groupby('Timeslot').Weather.mean().astype(int).to_csv(outfolder+'wvector_'+fname.split('_')[2]+'.csv')
+    return
+
+def LoadWeatherMatrix(foldername, fillmethod='backfill'):
+    fnames = [x for x in sorted(os.listdir(foldername)) if x[:7]=='wmatrix' and x[-4:]=='.csv']
+    dfs = []
+    for fname in fnames:
+        #print 'fname = {}'.format(fname)
+        df= pd.read_csv(foldername+fname, header=None, names=['Timeslot', fname.split('_')[1]], index_col='Timeslot')
+        dfs.append(df)
+        
+    df = pd.concat(dfs, axis=1)
+    if fillmethod is not None:
+        df=df.fillna(method=fillmethod, axis=1)
+    return df
+    pass
 
 def PrepareTestExamples(setname, ofname, wfname, outname):
     #Defining all file names  
@@ -133,30 +167,6 @@ def WriteOnKaggleFormat(Xtestpd, Ytest, date):
     
 def MeanAbsoluteError(truths, preds): 
     return np.mean(np.abs(truths-preds))
-
-def CreateWeatherVects(foldername, outfolder):
-    fnames = [x for x in sorted(os.listdir(foldername)) if x[0]!='.']
-    for fname in fnames: 
-        wdf = pd.read_csv(foldername+fname, sep='\t', 
-                          names=['Timestamp', 'Weather','Temperature', 'PM2.5'], header=None)
-        wdf['Timeslot']=wdf.Timestamp.apply(totimeslot)
-        print fname 
-        wdf.groupby('Timeslot').Weather.mean().astype(int).to_csv(outfolder+'wmatrix_'+fname.split('_')[2]+'.csv')
-    return
-
-def ConstructWeatherMatrix(foldername, fillmethod='backfill'):
-    fnames = [x for x in sorted(os.listdir(foldername)) if x[:7]=='wmatrix' and x[-4:]=='.csv']
-    dfs = []
-    for fname in fnames:
-        #print 'fname = {}'.format(fname)
-        df= pd.read_csv(foldername+fname, header=None, names=['Timeslot', fname.split('_')[1]], index_col='Timeslot')
-        dfs.append(df)
-        
-    df = pd.concat(dfs, axis=1)
-    if fillmethod is not None:
-        df=df.fillna(method=fillmethod, axis=1)
-    return df
-    pass
 
 def one_hot_encode(x, n_classes):
     """
