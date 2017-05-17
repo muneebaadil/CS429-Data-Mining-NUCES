@@ -178,8 +178,7 @@ def PredictOnKaggleTestSet(basepath, kagglefname, model, Save=True):
         KaggleXtest['district_date_slot'] = clustermap.ix[list(Xtestpd.RegionID.values)].RegionHash.values
         KaggleXtest['district_date_slot'] = KaggleXtest.district_date_slot.astype(str).str.cat(Xtestpd.Date.astype(str), 
                                                                                               sep='_')
-        KaggleXtest['district_date_slot'] = KaggleXtest.district_date_slot.astype(str).str.cat(Xtestpd.Timeslot.apply(lambda x:x-1).astype(str), 
-                                                                                              sep='_')
+        KaggleXtest['district_date_slot'] = KaggleXtest.district_date_slot.astype(str).str.cat(Xtestpd.Timeslot.apply(lambda x:x-1).astype(str), sep='_')
         KaggleFull.ix[KaggleXtest.district_date_slot.values] = KaggleXtest.Gap.values[:, np.newaxis]
 
     if Save ==True:
