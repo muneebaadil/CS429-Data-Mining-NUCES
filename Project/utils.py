@@ -164,7 +164,7 @@ def ConstructTestDay(orderfname, weatherfname, poifname, clustermapfname, date, 
     orderdf.to_csv(outname, sep=',',index=False)
     return orderdf
     
-def PredictOnKaggleTestSet(basepath, kagglefname, predictor, model, deg, Save=True):
+def PredictOnKaggleTestSet(basepath, kagglefname, model, Save=True):
     testfnames = [x for x in sorted(os.listdir(basepath+'DesignMatrices/')) if x[0]!='.']
     clusterfname = basepath+'cluster_map/cluster_map'
     clustermap = pd.read_csv(clusterfname, sep='\t', names=['RegionHash', 'RegionID'], index_col='RegionID')
@@ -172,7 +172,7 @@ def PredictOnKaggleTestSet(basepath, kagglefname, predictor, model, deg, Save=Tr
     KaggleFull = pd.read_csv(kagglefname, index_col='id')
     for fname in testfnames:
         Xtestpd = pd.read_csv(basepath+'DesignMatrices/'+fname)
-        Xtestpd['Gap']=predictor(model, deg, Xtestpd)
+        Xtestpd['Gap']=model.Predict(Xtestpd)
 
         KaggleXtest = pd.DataFrame(Xtestpd.Gap.values, columns=['Gap'])
         KaggleXtest['district_date_slot'] = clustermap.ix[list(Xtestpd.RegionID.values)].RegionHash.values
