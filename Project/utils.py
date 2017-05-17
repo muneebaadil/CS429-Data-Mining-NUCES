@@ -163,20 +163,29 @@ def ConstructTestDay(orderfname, weatherfname, poifname, clustermapfname, date, 
 
     orderdf.to_csv(outname, sep=',',index=False)
     return orderdf
-
-def WriteOnKaggleFormat(Xtestpd, Ytest, date):
-    myout = pd.DataFrame(Ytest, columns=['gap'])
-    myout['district_date_slot'] = Xtestpd['RegionHash'].values
-    myout['date'] = date
-    #myout
-    myout['district_date_slot'] = myout.district_date_slot.astype(str).str.cat(Xtestpd.Date.astype(str), sep='_')
-    myout['district_date_slot'] = myout.district_date_slot.astype(str).str.cat(Xtestpd.Timeslot.astype(str), sep='-')
-    #myout=myout.set_index('district_date_slot')
     
-    kaggleout = pd.read_csv('sample.csv', index_col='district_date_slot')
-    kaggleout.ix[myout['district_date_slot'].values] = myout['gap'].values[:, np.newaxis]
-    #kaggleout.loc[myout['district_date_slot'].values].gap = myout.gap.values
-    kaggleout.to_csv('sample.csv')
+def PredictOnKaggleTestSet(basepath, kagglefname, predictor, model, deg, Save=True):
+    testfnames = [x for x in sorted(os.listdir(basepath+'DesignMatrices/')) if x[0]!='.']
+    clusterfname = basepath+'cluster_map/cluster_map'
+    clustermap = pd.read_csv(clusterfname, sep='\t', names=['RegionHash', 'RegionID'], index_col='RegionID')
+
+    KaggleFull = pd.read_csv(kagglefname, index_col='id')
+    for fname in testfnames:
+        Xtestpd = pd.read_csv(basepath+'DesignMatrices/'+fname)
+        Xtestpd['Gap']=predictor(model, deg, Xtestpd)
+
+        KaggleXtest = pd.DataFrame(Xtestpd.Gap.values, columns=['Gap'])
+        KaggleXtest['district_date_slot'] = clustermap.ix[list(Xtestpd.RegionID.values)].RegionHash.values
+        KaggleXtest['district_date_slot'] = KaggleXtest.district_date_slot.astype(str).str.cat(Xtestpd.Date.astype(str), 
+                                                                                              sep='_')
+        KaggleXtest['district_date_slot'] = KaggleXtest.district_date_slot.astype(str).str.cat(Xtestpd.Timeslot.apply(lambda x:x-1).astype(str), 
+                                                                                              sep='_')
+        KaggleFull.ix[KaggleXtest.district_date_slot.values] = KaggleXtest.Gap.values[:, np.newaxis]
+
+    if Save ==True:
+        KaggleFull.to_csv(kagglefname)
+    else:
+        return KaggleFull
     
 def MeanAbsoluteError(truths, preds): 
     return np.mean(np.abs(truths-preds))
