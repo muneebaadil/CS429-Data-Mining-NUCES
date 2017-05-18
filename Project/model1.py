@@ -40,24 +40,33 @@ class Model1(object):
         bestscore = np.inf 
         bestmodel = None
         bestdeg = None
+        
+        self.valscores = []
+        self.trainscores = []
 
-        for d in np.arange(1,10+1):
-            Xd = self.Transformer(Xtrain, d)
-            model=linear_model.RidgeCV(alphas=np.logspace(1,20,5),scoring='neg_mean_absolute_error')
-            model.fit(Xd, demandTrain-supplyTrain)
+        for alpha in np.linspace(0,50+1,25):
+            for d in np.arange(1,10+1):
+                Xd = self.Transformer(Xtrain, d)
+                model=linear_model.Ridge(alpha=alpha)
+                model.fit(Xd, demandTrain-supplyTrain)
 
-            Xd_ = self.Transformer(Xval, d)
-            ypreds = model.predict(Xd_)
-            ypreds2 = model.predict(Xd)
+                Xd_ = self.Transformer(Xval, d)
+                ypreds = model.predict(Xd_)
+                ypreds2 = model.predict(Xd)
 
-            score = utils.MeanAbsoluteError(ypreds,demandVal-supplyVal)
-            if bestscore > score: 
-                bestscore = score 
-                bestmodel = model 
-                bestdeg = d
+                score = utils.MeanAbsoluteError(ypreds,demandVal-supplyVal)
+                score2 = utils.MeanAbsoluteError(ypreds2,demandTrain-supplyTrain)
 
-            if verbose==True:
-                print 'degree = {}, score = {}'.format(d, score)
+                self.valscores.append(score) 
+                self.trainscores.append(score2)
+
+                if bestscore > score: 
+                    bestscore = score 
+                    bestmodel = model 
+                    bestdeg = d
+
+                if verbose==True:
+                    print 'degree = {}, alpha = {}, CV score = {}, Training score = {}'.format(d, alpha, score, score2)
 
         Xfull = np.concatenate((Xtrain, Xval))
         supplyFull = np.concatenate((supplyTrain, supplyVal))
@@ -72,7 +81,8 @@ class Model1(object):
         self.degree = bestdeg
 
     def Predict(self, X):
-        """"""
+        """
+        """
         X = X.drop(['Date','Weather','Temperature','PM2.5'], axis=1)
         Xnp = X.values 
         Xnew = self.Transformer(Xnp,self.degree)

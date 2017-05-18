@@ -27,14 +27,18 @@ class Model2(object):
         
     def SplitSetByTimeslot(self, X, supply, demand, splits):
         X1 = X[X[:,1]<=splits[0]]
+        X2 = X[(X[:,1]<=splits[1]) & (X[:,1]>splits[0])]
+        X3 = X[X[:,1]>splits[1]]
+        
+        if (supply is None) or (demand is None): 
+            return X1,X2,X3
+        
         S1 = supply[X[:,1]<=splits[0]]
         D1 = demand[X[:,1]<=splits[0]]
         
-        X2 = X[(X[:,1]<=splits[1]) & (X[:,1]>splits[0])]
         S2 = supply[(X[:,1]<=splits[1]) & (X[:,1]>splits[0])]
         D2 = demand[(X[:,1]<=splits[1]) & (X[:,1]>splits[0])]
         
-        X3 = X[X[:,1]>splits[1]]
         S3 = supply[X[:,1]>splits[1]]
         D3 = demand[X[:,1]>splits[1]]  
         
@@ -47,6 +51,10 @@ class Model2(object):
         X=X.drop(['Temperature','PM2.5', 'Weather', 'Date'],axis=1)
         Xnp,supplynp,demandnp = X.values,supply.values,demand.values
         Xtrain, supplyTrain, demandTrain, Xval, supplyVal, demandVal=utils.SplitByRegion(Xnp,supplynp,demandnp,splitfraction)
+        
+        minloss = np.inf
+        bestm1,bestm2,bestm3=None, None,None
+        bestalpha,bestdeg=None,None
         
         for splits in timesplits: 
             for d in np.arange(1,10+1):
@@ -63,14 +71,34 @@ class Model2(object):
                     m2.fit(X2train, D2train-S2train) 
                     m3.fit(X3train, D3train-S3train)
                     
-                    print 'splits = {}, d = {}, alpha = {}'.format(splits,d,alpha)
+                    ypreds = np.zeros_like(supplyVal) 
+                    ypreds[Xval[:,1]<=splits[0]] = m1.predict(self.Transformer(Xval[Xval[:,1]<=splits[0]], d))
+                    ypreds[(Xval[:,1]<=splits[1]) & (Xval[:,1]>splits[0])] = m2.predict(self.Transformer(Xval[(Xval[:,1]<=splits[1]) & (Xval[:,1]>splits[0])], d))
+                    ypreds[Xval[:,1]>splits[1]] = m3.predict(self.Transformer(Xval[Xval[:,1]>splits[1]], d))
+                                                              
+                    loss = utils.MeanAbsoluteError(ypreds,demandVal-supplyVal)
+                    print 'splits = {}, d = {}, alpha = {}, loss={}'.format(splits,d,alpha,loss)
                     
+                    if minloss > loss: 
+                        minloss = loss 
+                        bestm1, bestm2, bestm3 = m1, m2, m3 
+                        bestalpha, bestdeg = alpha, d
+                        
+        self.m1,self.m2,self.m3 = bestm1, bestm2, bestm3 
+        self.alpha, self.degree = bestalpha, bestdeg
         return 
     
-    def Predict(self, X, splits=None): 
-        if splits is None: 
-            pass 
-        elif: 
-            pass
-        pass
+    def Predict(self, X, splits=None, deg=None, models=None): 
+        
+        X=X.drop(['Temperature','PM2.5', 'Weather', 'Date'],axis=1)
+        X=X.values
+        
+        self.splits = (40,60) 
+        
+        ypreds=np.zeros((X.shape[0],))
+        ypreds[X[:,1]<=splits[0]] = m1.predict(self.Transformer(X[X[:,1]<=splits[0]], self.bestdeg))
+        ypreds[(X[:,1]<=splits[1]) & (X[:,1]>splits[0])] = m2.predict(self.Transformer(X[(X[:,1]<=splits[1]) & (X[:,1]>splits[0])], d))
+        ypreds[X[:,1]>splits[1]] = m3.predict(self.Transformer(X[X[:,1]>splits[1]], d))
+        
+        return ypreds
     
