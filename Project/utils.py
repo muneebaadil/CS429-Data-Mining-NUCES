@@ -1,7 +1,9 @@
+import pdb
 from sklearn import linear_model
 import numpy as np
 import pandas as pd 
 import os 
+from collections import defaultdict
 
 def SplitByRegion(X, supply, demand, splitfrac):
     Xtrain, supplyTrain, demandTrain = [], [], []
@@ -86,16 +88,50 @@ def ConstructTrainingDay(orderfname, weatherfname, poifname, clustermapfname, da
     orderdf['Temperature'] = (weatherdf.groupby('timeslot')['temperature'].mean()).ix[orderdf['Timeslot'].values].values 
     orderdf['PM2.5'] = (weatherdf.groupby('timeslot')['pm2.5'].mean()).ix[orderdf['Timeslot'].values].values
     orderdf['Date'] = date
-    
+      
     #Constructing a design matrix to store 
     designMatrix = (orderdf.groupby(['StartRegionID', 'Timeslot', 'Weather', 'Temperature', 'PM2.5', 'Date']))['DriverID'].agg({
                     'Demand': 'count', 'Supply': lambda x:np.sum(x!='NULL')})
     
-    designMatrix.to_csv(outname, sep=',')
+    #Finally, adding POI information 
+    poidf = ConstructPOITable(poifname)
+    poidf['StartRegionID'] = clustermapdf.ix[poidf.index.values].values[:,0]
+    
+    designMatrix = designMatrix.reset_index()
+    designMatrix=designMatrix.merge(poidf, on='StartRegionID')
+    
+    #Saving the constructed design matrix
+    designMatrix.to_csv(outname, sep=',', index=False)
     return designMatrix
 
 getdate = lambda x: x.split(',')[-1]
 getregid = lambda x: x.split(',')[2]
+
+def ConstructPOITable(fname, subcat=False):
+    poi = pd.read_csv(fname, header=None, names=['Mess'])
+    poi['RegionHash'] = poi.Mess.apply(lambda x: x.split('\t')[0])
+    poi['AllFacilities'] = poi.Mess.apply(lambda x: x.split('\t')[1:])
+    poi.set_index('RegionHash',inplace=True)
+    poi.drop('Mess',axis=1,inplace=True)
+    
+    for idx, row in poi.iterrows():
+        fcounts = defaultdict(int)
+        fvscount = row.values[0]
+        for f in fvscount: 
+            fidsubcat = f.split(':')[0]
+            fidcat = fidsubcat.split('#')[0]
+            fcount = f.split(':')[1]
+
+            fcounts[fidcat] += int(fcount)
+
+            if subcat==False:
+                #print 'fidsubcat = {}, fidcat = {}, counts = {}'.format(fidsubcat, fidcat, fcounts[fidcat])
+                poi.set_value(idx, fidcat, fcounts[fidcat])
+            else: 
+                poi.set_value(idx, fidsubcat, fcount)
+
+    poi.fillna(0,inplace=True)
+    return poi.drop('AllFacilities',axis=1) 
 
 def ConstructWeatherVectors(foldername, outfolder):
     fnames = [x for x in sorted(os.listdir(foldername)) if x[0]!='.']
@@ -109,7 +145,7 @@ def ConstructWeatherVectors(foldername, outfolder):
     return
 
 def LoadWeatherMatrix(foldername, fillmethod='backfill'):
-    fnames = [x for x in sorted(os.listdir(foldername)) if x[:7]=='wmatrix' and x[-4:]=='.csv']
+    fnames = [x for x in sorted(os.listdir(foldername)) if x[:7]=='wvector' and x[-4:]=='.csv']
     dfs = []
     for fname in fnames:
         #print 'fname = {}'.format(fname)
@@ -164,13 +200,17 @@ def ConstructTestDay(orderfname, weatherfname, poifname, clustermapfname, date, 
     orderdf.to_csv(outname, sep=',',index=False)
     return orderdf
     
-def PredictOnKaggleTestSet(basepath, kagglefname, model, Save=True):
+def PredictOnKaggleTestSet(basepath, kagglefname, model, verbose=True, Save=True):
     testfnames = [x for x in sorted(os.listdir(basepath+'DesignMatrices/')) if x[0]!='.']
     clusterfname = basepath+'cluster_map/cluster_map'
     clustermap = pd.read_csv(clusterfname, sep='\t', names=['RegionHash', 'RegionID'], index_col='RegionID')
 
     KaggleFull = pd.read_csv(kagglefname, index_col='id')
     for fname in testfnames:
+        
+        if verbose == True:
+            print 'predicting for date = {}'.format(fname)
+            
         Xtestpd = pd.read_csv(basepath+'DesignMatrices/'+fname)
         Xtestpd['Gap']=model.Predict(Xtestpd)
 
@@ -180,7 +220,6 @@ def PredictOnKaggleTestSet(basepath, kagglefname, model, Save=True):
                                                                                               sep='_')
         KaggleXtest['district_date_slot'] = KaggleXtest.district_date_slot.astype(str).str.cat(Xtestpd.Timeslot.apply(lambda x:x-1).astype(str), sep='_')
         KaggleFull.ix[KaggleXtest.district_date_slot.values] = KaggleXtest.Gap.values[:, np.newaxis]
-
     if Save ==True:
         KaggleFull.to_csv(kagglefname)
     else:
