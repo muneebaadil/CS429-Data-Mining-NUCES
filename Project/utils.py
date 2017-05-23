@@ -94,7 +94,7 @@ def ConstructTrainingDay(orderfname, weatherfname, poifname, clustermapfname, da
                     'Demand': 'count', 'Supply': lambda x:np.sum(x!='NULL')})
     
     #Finally, adding POI information 
-    poidf = ConstructPOITable(poifname)
+    poidf = ConstructPOITable(poifname, False)
     poidf['StartRegionID'] = clustermapdf.ix[poidf.index.values].values[:,0]
     
     designMatrix = designMatrix.reset_index()
@@ -197,6 +197,16 @@ def ConstructTestDay(orderfname, weatherfname, poifname, clustermapfname, date, 
     
     orderdf = orderdf.drop([0, 1, 'RegionHash'], axis=1)
 
+    #Finally, adding POI information 
+    poidf = ConstructPOITable(poifname, False)
+    poidf['StartRegionID'] = clustermapdf.ix[poidf.index.values].values[:,0]
+    
+    designMatrix = designMatrix.reset_index()
+    designMatrix=designMatrix.merge(poidf, on='StartRegionID')
+    
+    #Saving the constructed design matrix
+    designMatrix.to_csv(outname, sep=',', index=False)
+    
     orderdf.to_csv(outname, sep=',',index=False)
     return orderdf
     
