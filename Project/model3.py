@@ -1,4 +1,5 @@
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import pandas as pd 
 import os
@@ -12,11 +13,6 @@ class Model3(object):
         pass
     
     def Train(self,X,supply,demand,splitfraction,verbose=True):
-        
-        X = X.copy()
-        supply = supply.copy()
-        demand = demand.copy()
-        
         X,supply,demand=self.Preprocess(X,supply,demand)
 
         Xtrain,supplyTrain,demandTrain,Xval,supplyVal,demandVal=utils.SplitByRegion(X,supply,demand,.7)
@@ -24,7 +20,7 @@ class Model3(object):
         bestscore = np.inf 
         bestnestimaters = None 
         for nestimator in np.arange(10,20+1,5):
-            for depth in np.arange(5,30+1,5):
+            for depth in np.arange(10,20+1,5):
                 model=RandomForestRegressor(nestimator, max_depth=depth)
                 model.fit(Xtrain,demandTrain-supplyTrain)
 
@@ -53,15 +49,25 @@ class Model3(object):
     def Preprocess(self,X,supply,demand):
         X['Weekday'] = pd.to_datetime(X.Date).dt.weekday
         X['Daytype'] = ((X.Weekday==6) | (X.Weekday==5)).astype(bool)
-        X = X.drop(['1','24','25','20','22','23','4','8','5','14','7','15','16','17','11','13',
-                   '19','6','3','2','21','12','18','9','10'],axis=1)
-        X = X.drop(['Temperature', 'Weather', 'PM2.5', 'Date', 'Weekday'], axis=1)
         
-        print 'Features using = {}'.format(X.columns)
+        allfacilities = ['1','24','25','20','22','23','4','8','5','14','7','15','16','17','11','13',
+                   '19','6','3','2','21','12','18','9','10']
+        
+        #for facility in allfacilities:
+        #    X[facility] = X[facility] > 0.
+            
+        #X = X.drop(allfacilities, axis=1)
+        X = X.drop(['StartRegionID','Date', 'Weekday'], axis=1)
+        
+        self.feats = list(X.columns)
+        print 'Features using = {}'.format(self.feats)
         
         X = X.values
+        X = self.Transformer(X)
+        
         if (supply is None) or (demand is None):
             return X
+        
         supply = supply.values
         demand = demand.values
         
@@ -72,11 +78,6 @@ class Model3(object):
         return self.model.predict(X)
         
     def Transformer(self, X):
-        """One-hot-encodes region number"""    
-        #regionOHE = utils.one_hot_encode(X[:,0].astype(int),n_classes=67)[:,1:]
-        weatherOHE = utils.one_hot_encode(X[:,2].astype(int),n_classes=7)
-        weatherOHE = weatherOHE[:, weatherOHE.sum(axis=0)!=0]
-        #out = np.concatenate((regionOHE, X[:,1][:,np.newaxis], weatherOHE),axis=1)
-        out = np.concatenate((X[:,:2],weatherOHE),axis=1)
-        
-        return out 
+        enc=OneHotEncoder(sparse=False, categorical_features=[self.feats.index('Weather')])
+        X = enc.fit_transform(X)
+        return X
