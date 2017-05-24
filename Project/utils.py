@@ -5,46 +5,42 @@ import pandas as pd
 import os 
 from collections import defaultdict
 
-def SplitByRegion(X, supply, demand, splitfrac):
-    Xtrain, supplyTrain, demandTrain = [], [], []
-    Xval, supplyVal, demandVal = [], [], []
+def SplitByRegion(X, Y, splitfrac):
+    Xtrain, Ytrain = [], []
+    Xval, Yval = [], []
     
     regions = np.unique(X[:, 0])
 
     for r in regions: 
-        Xr, supplyr, demandr = X[X[:, 0]==r], supply[X[:, 0]==r], demand[X[:, 0]==r]
+        Xr, Yr = X[X[:, 0]==r], Y[X[:, 0]==r]
         
         randidx = np.random.choice(Xr.shape[0], Xr.shape[0], replace=False)
         splitidx = int(splitfrac * Xr.shape[0])
         
         Xtrain.append(Xr[randidx[:splitidx]])
-        supplyTrain.append(supplyr[randidx[:splitidx]])
-        demandTrain.append(demandr[randidx[:splitidx]])
+        Ytrain.append(Yr[randidx[:splitidx]])
         
         Xval.append(Xr[randidx[splitidx:]])
-        supplyVal.append(supplyr[randidx[splitidx:]])
-        demandVal.append(demandr[randidx[splitidx:]])
+        Yval.append(Yr[randidx[splitidx:]])
         
-    Xtrain, supplyTrain, demandTrain = np.concatenate(Xtrain), np.concatenate(supplyTrain), np.concatenate(demandTrain)
-    Xval, supplyVal, demandVal = np.concatenate(Xval), np.concatenate(supplyVal), np.concatenate(demandVal)
+    Xtrain, Ytrain = np.concatenate(Xtrain), np.concatenate(Ytrain)
+    Xval, Yval = np.concatenate(Xval), np.concatenate(Yval)
     
-    return Xtrain, supplyTrain, demandTrain, Xval, supplyVal, demandVal
+    return Xtrain, Ytrain, Xval, Yval
 
 def LoadTrainingSet(basepath):
     fnames = [x for x in sorted(os.listdir(basepath)) if x[0]!='.']
     #X, supply, demand = None, None, None
-    Xs, supplies, demands = [], [], []
+    Xs, Ys = [], []
     for fname in fnames: 
         table = pd.read_csv(basepath+fname)
-        supplies.append(table['Supply'])
-        demands.append(table['Demand'])
-        Xs.append(table.drop(['Supply', 'Demand'], axis=1))
+        Ys.append(table['Demand']-table['Supply'])
+        Xs.append(table.drop(['Supply'], axis=1))
         
-    supply = pd.concat(supplies)
-    demand = pd.concat(demands)
+    Y = pd.concat(Ys)
     X = pd.concat(Xs)
 
-    return X, supply, demand
+    return X, Y
 
 totimeslot = lambda x: ((int(x[-5:-3]) + (int(x[-8:-6])*60))//10)+1
 
