@@ -174,7 +174,7 @@ def ConstructTestDay(orderfname, weatherfname, poifname, clustermapfname, date, 
     #Reading all files for the filename given as argument 
     orderdf = pd.read_csv(orderfname, sep=' ', header=None)
     weatherdf = pd.read_csv(weatherfname, sep='\t', header=None, na_filter=False, 
-                     names=['time', 'weather', 'temperature', 'pm2.5'])
+                     names=['Time', 'Weather', 'Temperature', 'PM2.5'])
     clustermapdf = pd.read_csv(clustermapfname, sep='\t', 
                                names=['RegionHash', 'RegionID'], index_col = 0)
 
@@ -184,22 +184,22 @@ def ConstructTestDay(orderfname, weatherfname, poifname, clustermapfname, date, 
     orderdf['Date'] = orderdf[0].apply(getdate)
     orderdf.drop([0,1],axis=1,inplace=True)
 
-    weatherdf['Timeslot'] = weatherdf['time'].apply(totimeslot)
-    orderdf=pd.merge(orderdf,weatherdf[['Timeslot','weather','temperature','pm2.5']],on='Timeslot',how='left')
+    weatherdf['Timeslot'] = weatherdf['Time'].apply(totimeslot)
+    orderdf=pd.merge(orderdf,weatherdf[['Timeslot','Weather','Temperature','PM2.5']],on='Timeslot',how='left')
 
-    temp1=orderdf.groupby(['StartRegionID','Timeslot','Date'])['weather','temperature','pm2.5'].mean().reset_index()
-    temp2=orderdf.groupby(['StartRegionID','Timeslot','Date'])['weather'].agg({'demand':lambda x:int(x.shape[0])}).reset_index()
+    temp1=orderdf.groupby(['StartRegionID','Timeslot','Date'])['Weather','Temperature','PM2.5'].mean().reset_index()
+    temp2=orderdf.groupby(['StartRegionID','Timeslot','Date'])['Weather'].agg({'Demand':lambda x:int(x.shape[0])}).reset_index()
     orderdf=pd.merge(temp1,temp2,on=['StartRegionID','Timeslot','Date'],how='inner')
 
     #Finally, adding POI information 
     poi=ConstructPOITable('./training_set/poi_data/poi_data')
     poi['StartRegionID'] = clustermapdf.ix[poi.index.values].values[:,0]
     
-    designMatrix=pd.merge(orderdf, poi, on='StartRegionID')
+    designMatrix=pd.merge(orderdf, poi, on='StartRegionID',how='left')
     
     #Saving the constructed design matrix
     designMatrix.to_csv(outname, sep=',', index=False)
-    return orderdf
+    return designMatrix, orderdf
     
 def PredictOnKaggleTestSet(basepath, kagglefname, model, verbose=True, Save=True):
     testfnames = [x for x in sorted(os.listdir(basepath+'DesignMatrices/')) if x[0]!='.']
