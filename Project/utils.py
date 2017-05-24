@@ -181,33 +181,28 @@ def ConstructTestDay(orderfname, weatherfname, poifname, clustermapfname, date, 
                      names=['time', 'weather', 'temperature', 'pm2.5'])
     clustermapdf = pd.read_csv(clustermapfname, sep='\t', 
                                names=['RegionHash', 'RegionID'], index_col = 0)
-    
+
     orderdf['RegionHash'] = orderdf[0].apply(getregid)
-    orderdf['RegionID'] = clustermapdf.ix[orderdf['RegionHash'].values].values[:,0]
+    orderdf['StartRegionID'] = clustermapdf.ix[orderdf['RegionHash'].values].values[:,0]
     orderdf['Timeslot'] = orderdf[1].apply(totimeslot)
     orderdf['Date'] = orderdf[0].apply(getdate)
-    #orderdf['RegionID'] = clustermapdf.ix[orderdf['RegionHash'].values].values[:,0]
+    orderdf.drop([0,1],axis=1,inplace=True)
 
-    weatherdf['timeslot'] = weatherdf['time'].apply(totimeslot)
+    weatherdf['Timeslot'] = weatherdf['time'].apply(totimeslot)
+    orderdf=pd.merge(orderdf,weatherdf[['Timeslot','weather','temperature','pm2.5']],on='Timeslot',how='left')
 
-    orderdf['Weather'] = weatherdf.groupby('timeslot')['weather'].mean().ix[orderdf['Timeslot'].values].values
-    orderdf['Temperature'] = (weatherdf.groupby('timeslot')['temperature'].mean()).ix[orderdf['Timeslot'].values].values
-    orderdf['PM2.5'] = (weatherdf.groupby('timeslot')['pm2.5'].mean()).ix[orderdf['Timeslot'].values].values
-    orderdf['Date'] = orderdf[0].apply(getdate)
-    
-    orderdf = orderdf.drop([0, 1, 'RegionHash'], axis=1)
+    temp1=orderdf.groupby(['StartRegionID','Timeslot','Date'])['weather','temperature','pm2.5'].mean().reset_index()
+    temp2=orderdf.groupby(['StartRegionID','Timeslot','Date'])['weather'].agg({'demand':lambda x:int(x.shape[0])}).reset_index()
+    orderdf=pd.merge(temp1,temp2,on=['StartRegionID','Timeslot','Date'],how='inner')
 
     #Finally, adding POI information 
-    poidf = ConstructPOITable(poifname, False)
-    poidf['StartRegionID'] = clustermapdf.ix[poidf.index.values].values[:,0]
+    poi=ConstructPOITable('./training_set/poi_data/poi_data')
+    poi['StartRegionID'] = clustermapdf.ix[poi.index.values].values[:,0]
     
-    designMatrix = designMatrix.reset_index()
-    designMatrix=designMatrix.merge(poidf, on='StartRegionID')
+    designMatrix=pd.merge(orderdf, poi, on='StartRegionID')
     
     #Saving the constructed design matrix
     designMatrix.to_csv(outname, sep=',', index=False)
-    
-    orderdf.to_csv(outname, sep=',',index=False)
     return orderdf
     
 def PredictOnKaggleTestSet(basepath, kagglefname, model, verbose=True, Save=True):
@@ -225,7 +220,7 @@ def PredictOnKaggleTestSet(basepath, kagglefname, model, verbose=True, Save=True
         Xtestpd['Gap']=model.Predict(Xtestpd)
 
         KaggleXtest = pd.DataFrame(Xtestpd.Gap.values, columns=['Gap'])
-        KaggleXtest['district_date_slot'] = clustermap.ix[list(Xtestpd.RegionID.values)].RegionHash.values
+        KaggleXtest['district_date_slot'] = clustermap.ix[list(Xtestpd.StartRegionID.values)].RegionHash.values
         KaggleXtest['district_date_slot'] = KaggleXtest.district_date_slot.astype(str).str.cat(Xtestpd.Date.astype(str), 
                                                                                               sep='_')
         KaggleXtest['district_date_slot'] = KaggleXtest.district_date_slot.astype(str).str.cat(Xtestpd.Timeslot.apply(lambda x:x-1).astype(str), sep='_')
