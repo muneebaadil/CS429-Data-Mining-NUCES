@@ -110,6 +110,7 @@ def ConstructPOITable(fname, subcat=False):
     poi.set_index('RegionHash',inplace=True)
     poi.drop('Mess',axis=1,inplace=True)
     
+    
     for idx, row in poi.iterrows():
         fcounts = defaultdict(int)
         fvscount = row.values[0]
@@ -127,6 +128,10 @@ def ConstructPOITable(fname, subcat=False):
                 poi.set_value(idx, fidsubcat, fcount)
 
     poi.fillna(0,inplace=True)
+    for col in poi.columns:
+        if col not in ['AllFacilities','RegionHash']: 
+            poi[col] = poi[col].astype(int)
+            
     return poi.drop('AllFacilities',axis=1) 
 
 def ConstructWeatherVectors(foldername, outfolder):
