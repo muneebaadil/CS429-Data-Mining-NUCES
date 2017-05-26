@@ -95,6 +95,23 @@ def LoadTrainingSet(dirname):
         csvfile=pd.read_csv(fname)
         Xs.append(csvfile.drop('Gap',axis=1))
         Ys.append(csvfile['Gap'])
-    X = pd.concat(Xs)
-    Y = pd.concat(Ys)
+    X = pd.concat(Xs,ignore_index=True)
+    Y = pd.concat(Ys,ignore_index=True)
     return X,Y
+
+def SplitTrainingSet(X,Y,fraction):
+    idx = np.arange(0,X.shape[0])
+    np.random.shuffle(idx)
+    
+    X = X.ix[idx]
+    Y = Y.ix[idx]
+
+    splitpoint = int(fraction*X.shape[0])
+    
+    Xtrain = X.iloc[:splitpoint]
+    Ytrain = Y.iloc[:splitpoint]
+    
+    Xval = X.iloc[splitpoint:]
+    Yval = Y.iloc[splitpoint:]
+    
+    return Xtrain,Ytrain,Xval,Yval
