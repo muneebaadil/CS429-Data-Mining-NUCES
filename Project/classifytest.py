@@ -1,13 +1,15 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[16]:
 
 import os 
 import pandas as pd 
 import numpy as np 
 import utils
 reload(utils)
+from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import MultinomialNB
 
 
 # In[2]:
@@ -70,6 +72,90 @@ def ConstructDataset(ofnames,wfnames,clusterfname,poifname):
 # In[6]:
 
 ConstructDataset(ofnames,wfnames,clusterfname,poifname)
+
+
+# In[9]:
+
+fnames = ['my_training_set/'+x for x in sorted(os.listdir('./my_training_set/'))]
+
+
+# In[40]:
+
+def Train(df):
+    df = df[df.RegionID_y!=0] #Dropping NANs
+    df['Weekday'] = pd.to_datetime(df['Date']).dt.weekday
+    df.drop(['RegionID_y','Date'],axis=1,inplace=True)
+    Ytrain=df['IsAnswered'].values
+    df.drop('IsAnswered',axis=1,inplace=True)
+    
+    print df[pd.isnull(df.Weather) | pd.isnull(df.Temperature) | pd.isnull(df['PM2.5'])]
+    print 'features using = {}'.format(df.columns)
+    Xtrain=df.values
+    del df
+    weights=np.ones((Xtrain.shape[0],))
+    weights[Ytrain==False]=2
+    
+    classifier.partial_fit(Xtrain,Ytrain,np.array([True,False],dtype=bool))
+
+
+# In[41]:
+
+classifier=GaussianNB()
+for fname in fnames[:-7]: 
+    print 'training for fname = {}'.format(fname)
+    Train(pd.read_csv(fname,index_col=0))
+
+
+# In[28]:
+
+for fname in fnames[-3:]:
+    df=pd.read_csv(fname,index_col=0)
+    df = df[df.RegionID_y!=0] #Dropping NANs
+    df['Weekday'] = pd.to_datetime(df['Date']).dt.weekday
+    #df.drop([],axis=1,inplace=True)
+    Ytest=df['IsAnswered'].values
+    Xtest=df.drop(['IsAnswered','Weather','Temperature','PM2.5','RegionID_x','RegionID_y','Date'],
+                  axis=1).values
+    print 'features using = {}'.format(df.columns)
+    
+    ypreds=classifier.predict(Xtest)
+    print 'accuracy = {}'.format(np.mean(ypreds==Ytest))
+    
+    gaptruths = ComputeGap(df)
+    df['IsAnswered']=ypreds
+    gappreds = ComputeGap(df)
+    del df
+    
+    print 'Gap l1 loss =',np.mean(np.abs(gappreds['Gap']-gaptruths['Gap']))
+
+
+# In[25]:
+
+1-(7/21.)
+
+
+# In[7]:
+
+def ComputeGap(df):
+    return df.groupby(['Date','RegionID_x','Timeslot']).IsAnswered.agg({'Gap': lambda x:np.sum(x==False)}).reset_index()
+
+fnames = ['my_training_set/'+x for x in sorted(os.listdir('./my_training_set/'))]
+ans=ComputeGap(pd.read_csv(fnames[0],index_col=0))
+
+
+# In[33]:
+
+abc=pd.read_csv('./my_training_set/2016-01-01.csv')
+
+
+# In[34]:
+
+abc[pd.isnull(abc.Weather)]
+
+
+# In[35]:
+
+del abc
 
 
 # In[ ]:
