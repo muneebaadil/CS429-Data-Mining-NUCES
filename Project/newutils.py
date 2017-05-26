@@ -87,3 +87,14 @@ def ConstructTrainingSet(setname):
         i+=1
             
     pass
+
+def LoadTrainingSet(dirname): 
+    fnames = [dirname+x for x in sorted(os.listdir(dirname))]
+    Xs,Ys = [],[]
+    for fname in fnames: 
+        csvfile=pd.read_csv(fname)
+        Xs.append(csvfile.drop('Gap',axis=1))
+        Ys.append(csvfile['Gap'])
+    X = pd.concat(Xs)
+    Y = pd.concat(Ys)
+    return X,Y
