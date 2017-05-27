@@ -1,12 +1,13 @@
 
 # coding: utf-8
 
-# In[22]:
+# In[1]:
 
 import numpy as np
 import pandas as pd 
 import sklearn as sk 
 import newutils as ut
+import os 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import OneHotEncoder
 import seaborn
@@ -37,7 +38,7 @@ Ytraindf.describe()
 
 # # Section Regression Testing
 
-# In[171]:
+# In[24]:
 
 class Regressor(object):
     def __init__(self):
@@ -47,7 +48,7 @@ class Regressor(object):
         
         #Splitting into two sets w.r.t extreme and normal gap values
         Xtrain1,Ytrain1, Xtrain2, Ytrain2 = self.Preprocess(Xtraindf,Ytraindf,'train')
-        Xval1, Yval1, Xval2, Yval2 = self.Preprocess(Xvaldf,Yvaldf,'test')
+        Xval1, Yval1, Xval2, Yval2 = self.Preprocess(Xvaldf,Yvaldf,'validation')
         
         nestimator=15
         minsamplesleaf=5#int(.0001*Xtrain.shape[0])
@@ -55,16 +56,16 @@ class Regressor(object):
 
         for minsamplesleaf in np.arange(5,5+1,5):
             print 'minsampleleaf:', minsamplesleaf,
-            reg1=RandomForestRegressor(n_estimators=nestimator, min_samples_leaf=minsamplesleaf,
+            self.reg1=RandomForestRegressor(n_estimators=nestimator, min_samples_leaf=minsamplesleaf,
                                      max_features=maxfeatures)
-            reg2=RandomForestRegressor(n_estimators=nestimator, min_samples_leaf=minsamplesleaf,
+            self.reg2=RandomForestRegressor(n_estimators=nestimator, min_samples_leaf=minsamplesleaf,
                                      max_features=maxfeatures)
             
-            reg1.fit(Xtrain1,Ytrain1)
-            reg2.fit(Xtrain2,Ytrain2)
+            self.reg1.fit(Xtrain1,Ytrain1)
+            self.reg2.fit(Xtrain2,Ytrain2)
             
-            ypreds1 = reg1.predict(Xval1)
-            ypreds2 = reg2.predict(Xval2)
+            ypreds1 = self.reg1.predict(Xval1)
+            ypreds2 = self.reg2.predict(Xval2)
 
             #print Yval1.shape, Yval2.shape, ypreds1.shape, ypreds2.shape 
             Yval=np.concatenate((Yval1,Yval2))
@@ -92,30 +93,42 @@ class Regressor(object):
             X2df,Y2df = Xdf[Ydf > (self.gapmean+self.scale*self.gapstd)], Ydf[Ydf > (self.gapmean+self.scale*self.gapstd)]
             return X1df.values,Y1df.values,X2df.values,Y2df.values
             
-        elif time=='test':
+        elif time=='validation':
             X1df,Y1df = Xdf[Ydf <= (self.gapmean+self.scale*self.gapstd)], Ydf[Ydf <= (self.gapmean+self.scale*self.gapstd)]
             X2df,Y2df = Xdf[Ydf > (self.gapmean+self.scale*self.gapstd)], Ydf[Ydf > (self.gapmean+self.scale*self.gapstd)]
             return X1df.values,Y1df.values,X2df.values,Y2df.values
+        
+        elif time=='test':
+            return Xdf
+        
+    def Predict(self,Xdf):
+        self.Preprocess(Xdf,None,'test')
+        return 
 
 
-# In[172]:
+# In[25]:
 
 reg = Regressor()
 losses=reg.Train(Xtraindf,Ytraindf,Xvaldf,Yvaldf)
 
 
-# In[151]:
+# In[26]:
 
-pd.DataFrame(losses).describe()
+Xtest=ut.LoadTestSet('./my_test_set/')
 
 
-# In[65]:
+# In[27]:
+
+reg.Predict(Xtest)
+
+
+# In[8]:
 
 fig,ax=plt.subplots()
 ax.boxplot(losses)
 
 
-# In[70]:
+# In[9]:
 
 Xsuspect=Xval[losses >= (losses.mean()+.5*losses.std())]
 Xinnocent=Xval[losses < (losses.mean()+.5*losses.std())]
@@ -164,9 +177,4 @@ Ytraindf.describe()
 # In[137]:
 
 Ytraindf[Ytraindf>=(Ytraindf.mean()+Ytraindf.std())].shape[0] / float(Ytraindf.shape[0])
-
-
-# In[ ]:
-
-
 
