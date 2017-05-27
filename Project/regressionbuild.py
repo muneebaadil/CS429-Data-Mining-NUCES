@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[22]:
 
 import numpy as np
 import pandas as pd 
@@ -9,6 +9,7 @@ import sklearn as sk
 import newutils as ut
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import OneHotEncoder
+import seaborn
 import matplotlib.pyplot as plt 
 get_ipython().magic(u'matplotlib notebook')
 plt.style.use('ggplot')
@@ -17,97 +18,152 @@ reload(ut)
 
 # # Section EDA
 
-# In[41]:
+# In[2]:
 
 Xdf,Ydf=ut.LoadTrainingSet('./my_training_set/')
 Xtraindf,Ytraindf,Xvaldf,Yvaldf=ut.SplitTrainingSet(Xdf,Ydf,.7)
 Xtraindf.shape, Ytraindf.shape, Xvaldf.shape, Yvaldf.shape 
 
 
-# In[42]:
+# In[3]:
 
 Xtraindf.describe()
 
 
-# In[43]:
+# In[4]:
 
 Ytraindf.describe()
 
 
 # # Section Regression Testing
 
-# In[103]:
+# In[171]:
 
-def Train(Xtrain,Ytrain,Xval,Yval):
+class Regressor(object):
+    def __init__(self):
+        pass
     
-    nestimator=15
-    minsamplesleaf=5#int(.0001*Xtrain.shape[0])
-    maxfeatures = 'auto'
-    
-    for minsamplesleaf in np.arange(1,5+1,1):
-        print 'minsampleleaf:', minsamplesleaf,
-        reg=RandomForestRegressor(n_estimators=nestimator, min_samples_leaf=minsamplesleaf,
-                                 max_features=maxfeatures)
-        reg.fit(Xtrain,Ytrain)
-        ypreds = reg.predict(Xval)
+    def Train(self,Xtraindf,Ytraindf,Xvaldf,Yvaldf):
+        
+        #Splitting into two sets w.r.t extreme and normal gap values
+        Xtrain1,Ytrain1, Xtrain2, Ytrain2 = self.Preprocess(Xtraindf,Ytraindf,'train')
+        Xval1, Yval1, Xval2, Yval2 = self.Preprocess(Xvaldf,Yvaldf,'test')
+        
+        nestimator=15
+        minsamplesleaf=5#int(.0001*Xtrain.shape[0])
+        maxfeatures = 'auto'
 
-        losses = np.abs(ypreds-Yval)
-        loss = np.mean(losses)
+        for minsamplesleaf in np.arange(5,5+1,5):
+            print 'minsampleleaf:', minsamplesleaf,
+            reg1=RandomForestRegressor(n_estimators=nestimator, min_samples_leaf=minsamplesleaf,
+                                     max_features=maxfeatures)
+            reg2=RandomForestRegressor(n_estimators=nestimator, min_samples_leaf=minsamplesleaf,
+                                     max_features=maxfeatures)
+            
+            reg1.fit(Xtrain1,Ytrain1)
+            reg2.fit(Xtrain2,Ytrain2)
+            
+            ypreds1 = reg1.predict(Xval1)
+            ypreds2 = reg2.predict(Xval2)
 
-        print 'L1 loss = {}'.format(loss)
-    return losses
+            #print Yval1.shape, Yval2.shape, ypreds1.shape, ypreds2.shape 
+            Yval=np.concatenate((Yval1,Yval2))
+            ypreds=np.concatenate((ypreds1,ypreds2))
+            losses = np.abs(Yval-ypreds)
+            loss = np.mean(losses)
 
-def Preprocess(Xdf,Ydf):
-    featstodrop = ['RegionID','Date']    
-    Xdf = Xdf.drop(featstodrop,axis=1)
-    X = Xdf.values
-    Y = Ydf.values
-    
-    #Removing 'Y-outliers'
-    ylimit = np.mean(Y)+np.std(Y)
-    X = X[Y<=ylimit]
-    Y = Y[Y<=ylimit]
-    
-    #One hot encoding weather feature
-    enc = OneHotEncoder(n_values=10, sparse=False,
-                        categorical_features=[list(Xdf.columns).index('Weather')])
-    X = enc.fit_transform(X)
-    
-    
-    print 'features using = {}'.format(set(Xdf.columns)-set(featstodrop))
-    
-    return X,Y
+            print 'L1 loss = {}'.format(loss)
+        return losses
+
+    def Preprocess(self,Xdf,Ydf,time='train'):
+        #1. Features' Construction/Extraction 
+        Xdf['Weekday'] = pd.to_datetime(Xdf.Date).dt.weekday
+        featstodrop = ['RegionID','Date','Weather','Temperature','PM2.5']    
+        Xdf = Xdf.drop(featstodrop,axis=1)
+        self.feats = list(Xdf.columns)
+        print 'features using = {}'.format(self.feats)
+        
+        #2. Preprocessing selected features
+        if time=='train':
+            self.gapmean = Ydf.mean()
+            self.gapstd = Ydf.std()
+            self.scale = 0.
+            X1df,Y1df = Xdf[Ydf <= (self.gapmean+self.scale*self.gapstd)], Ydf[Ydf <= (self.gapmean+self.scale*self.gapstd)]
+            X2df,Y2df = Xdf[Ydf > (self.gapmean+self.scale*self.gapstd)], Ydf[Ydf > (self.gapmean+self.scale*self.gapstd)]
+            return X1df.values,Y1df.values,X2df.values,Y2df.values
+            
+        elif time=='test':
+            X1df,Y1df = Xdf[Ydf <= (self.gapmean+self.scale*self.gapstd)], Ydf[Ydf <= (self.gapmean+self.scale*self.gapstd)]
+            X2df,Y2df = Xdf[Ydf > (self.gapmean+self.scale*self.gapstd)], Ydf[Ydf > (self.gapmean+self.scale*self.gapstd)]
+            return X1df.values,Y1df.values,X2df.values,Y2df.values
 
 
-# In[104]:
+# In[172]:
 
-print 'preprocessing..'
-Xtrain,Ytrain = Preprocess(Xtraindf,Ytraindf)
-Xval,Yval = Preprocess(Xvaldf,Yvaldf)
+reg = Regressor()
+losses=reg.Train(Xtraindf,Ytraindf,Xvaldf,Yvaldf)
 
-print '\nfitting..'
-losses=Train(Xtrain,Ytrain,Xval,Yval)
+
+# In[151]:
+
+pd.DataFrame(losses).describe()
+
+
+# In[65]:
+
+fig,ax=plt.subplots()
+ax.boxplot(losses)
+
+
+# In[70]:
+
+Xsuspect=Xval[losses >= (losses.mean()+.5*losses.std())]
+Xinnocent=Xval[losses < (losses.mean()+.5*losses.std())]
+
+
+# In[71]:
+
+pd.DataFrame(Xsuspect,columns=reg.feats).describe()
 
 
 # In[72]:
 
-Xsuspect=Xval[losses>=np.percentile(losses,75)]
+pd.DataFrame(Xinnocent,columns=reg.feats).describe()
 
 
-# In[94]:
+# In[73]:
+
+def PlotLosses(Xbad, Xgood, feats):
+    for i,feat in enumerate(xrange(Xbad.shape[1])):
+        plt.figure()
+        seaborn.kdeplot(Xbad[:,i],)
+        seaborn.kdeplot(Xgood[:,i],)
+        plt.title(feats[feat])
+
+ans=PlotLosses(Xsuspect,Xinnocent,reg.feats)
+
+
+# In[92]:
+
+bins = 2
+renge = Xtraindf['F4'].max()/float(bins)
+np.unique((Xtraindf['F4']/renge).astype(int))
+#np.unique(Xtraindf['F4'])
+
+
+# In[134]:
+
+Xtraindf.Weather
+
+
+# In[135]:
 
 Ytraindf.describe()
 
 
-# In[102]:
+# In[137]:
 
-Ytraindf[Ytraindf>=()].shape[0]/float(Ytraindf.shape[0])
-
-
-# In[101]:
-
-iqr=np.percentile(Ytraindf,75)-np.percentile(Ytraindf,25)
-np.percentile(Ytraindf,50)+(1.5*iqr)
+Ytraindf[Ytraindf>=(Ytraindf.mean()+Ytraindf.std())].shape[0] / float(Ytraindf.shape[0])
 
 
 # In[ ]:
