@@ -90,7 +90,7 @@ def ConstructTrainingSet(setname):
             
     pass
 
-def ConstructTestDay():
+def ConstructTestDay(ofname, wfname, clusterfname, poifname):
     orderdf=pd.read_csv(ofname,sep=' ',header=None)
     clustermapdf = pd.read_csv(clusterfname, sep='\t', 
                                    names=['RegionHash', 'RegionID'])
@@ -113,8 +113,23 @@ def ConstructTestDay():
     orderdf=pd.merge(temp1,temp2,on=['RegionID','Timeslot','Date'],how='inner')
     
     orderdf = pd.merge(orderdf,poidf,on='RegionID',how='left').drop('RegionHash',axis=1)
-    orderdf.to_csv(np.unique(out.Date.values)[0]+'.csv',index=False)
+    orderdf.to_csv(np.unique(orderdf.Date.values)[0]+'.csv',index=False)
     return orderdf
+
+def ConstructTestSet(setname):
+    ofnames = [setname+'order_data/'+x for x in sorted(os.listdir('./test_set/order_data/')) if x[0]!='.']
+    wfnames = [setname+'weather_data/'+x for x in sorted(os.listdir('./test_set/weather_data/')) if x[0]!='.']
+    poifname = setname + 'poi_data/poi_data'
+    clustermapfname = setname + 'cluster_map/cluster_map'
+    
+    print 'files done =',
+    i=1
+    for ofname, wfname in zip(ofnames, wfnames):
+        ConstructTestDay(ofname, wfname, clustermapfname, poifname)
+        print str(i)+',',
+        i+=1
+            
+    pass
 
 def LoadTrainingSet(dirname): 
     fnames = [dirname+x for x in sorted(os.listdir(dirname))]
