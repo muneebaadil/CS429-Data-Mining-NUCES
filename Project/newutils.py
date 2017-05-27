@@ -6,6 +6,8 @@ import os
 from collections import defaultdict
 
 totimeslot = lambda x: ((int(x[-5:-3]) + (int(x[-8:-6])*60))//10)+1
+getregid = lambda x: x.split(',')[2]
+getdate = lambda x: x.split(',')[-1]
 
 def ConstructPOITable(fname, subcat=False):
     poi = pd.read_csv(fname, header=None, names=['Mess'])
@@ -87,6 +89,32 @@ def ConstructTrainingSet(setname):
         i+=1
             
     pass
+
+def ConstructTestDay():
+    orderdf=pd.read_csv(ofname,sep=' ',header=None)
+    clustermapdf = pd.read_csv(clusterfname, sep='\t', 
+                                   names=['RegionHash', 'RegionID'])
+    weatherdf = pd.read_csv(wfname, sep='\t', header=None, na_filter=False, 
+                         names=['Time', 'Weather', 'Temperature', 'PM2.5'])
+    poidf = ConstructPOITable(poifname).reset_index()
+    poidf = pd.merge(poidf,clustermapdf,on='RegionHash',how='left')
+
+    orderdf['RegionHash'] = orderdf[0].apply(getregid)
+    orderdf['Date'] = orderdf[0].apply(getdate)
+    orderdf['Timeslot'] = orderdf[1].apply(totimeslot)
+    orderdf.drop([0,1],axis=1,inplace=True)
+
+    orderdf = pd.merge(orderdf,clustermapdf,on='RegionHash',how='left').drop('RegionHash',axis=1)
+    weatherdf['Timeslot'] = weatherdf['Time'].apply(totimeslot)
+    orderdf=pd.merge(orderdf,weatherdf[['Timeslot','Weather','Temperature','PM2.5']],on='Timeslot',how='left')
+    
+    temp1=orderdf.groupby(['RegionID','Timeslot','Date'])['Weather','Temperature','PM2.5'].mean().reset_index()
+    temp2=orderdf.groupby(['RegionID','Timeslot','Date'])['Weather'].agg({'Demand':lambda x:int(x.shape[0])}).reset_index()
+    orderdf=pd.merge(temp1,temp2,on=['RegionID','Timeslot','Date'],how='inner')
+    
+    orderdf = pd.merge(orderdf,poidf,on='RegionID',how='left').drop('RegionHash',axis=1)
+    orderdf.to_csv(np.unique(out.Date.values)[0]+'.csv',index=False)
+    return orderdf
 
 def LoadTrainingSet(dirname): 
     fnames = [dirname+x for x in sorted(os.listdir(dirname))]
